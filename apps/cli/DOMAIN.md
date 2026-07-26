@@ -28,9 +28,25 @@ inner-join on v2's claimed node ids.
 Exit codes: 0 = all enabled paths clean; 1 = diffs found (first ~20 printed);
 2 = required engine unavailable.
 
+
+### Global `--config` option
+`--config PATH` loads a TOML file mapping keys to `Settings` fields:
+`workbook_path`, `dag_path`, `dag_v2_path`, `rel_tol`, `abs_tol`,
+`recalc_engine`, `libreoffice_path`.  Path values are resolved relative to
+the config file's parent directory.  Unknown keys are rejected with a clear
+error listing valid ones.
+
+Precedence: **CLI option > TOML config > XLSX_ env var > Settings default**.
+The effective base `Settings` is built once in the typer callback and stashed
+on `ctx.obj["settings"]`.  Commands read it and layer their own CLI overrides
+on top via `_build_settings(base, ...)`.
+
+Example: `apps/cli/config.example.toml`.
+
 ## DI wiring
 All paths, tolerances, and engine choice come from `xlsx_core.settings.Settings`,
-overridable via CLI options and env vars (`XLSX_` prefix). No logic lives here — wiring only.
+overridable via CLI options, TOML config (`--config`), and env vars (`XLSX_` prefix).
+No logic lives here — wiring only.
 
 ## Testing
 `typer.testing.CliRunner` integration tests in `tests/test_main.py`.

@@ -1,0 +1,541 @@
+/* ============================================================
+   光伏项目财务模型 — 前端样式
+   设计基调：工程报表风。纸面底色 + 墨色文字 + 单一青绿强调色。
+   无渐变、无装饰性阴影；层级靠留白与发丝边框。
+   ============================================================ */
+
+:root {
+  /* 色板 */
+  --paper:      #f6f5f2;   /* 页面底色：暖白纸面 */
+  --surface:    #fffefb;   /* 卡片/面板 */
+  --ink:        #20201d;   /* 主文字 */
+  --ink-2:      #55534c;   /* 次要文字（对比度 ≥ 7:1） */
+  --ink-3:      #6f6c64;   /* 辅助文字（对比度 ≥ 4.6:1，仅用于大号/次要信息） */
+  --line:       #d9d5cc;   /* 发丝边框 */
+  --line-soft:  #e8e5de;
+  --accent:     #0f766e;   /* 唯一强调色（白字对比度 5.7:1） */
+  --accent-ink: #0b5750;   /* 强调色深阶，用于白底上的强调文字（7.4:1） */
+  --accent-bg:  #e6f3f1;   /* 强调色浅底 */
+  --danger:     #b42318;   /* 错误（白底对比度 5.9:1） */
+  --danger-bg:  #fdecea;
+
+  /* 字体 */
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-mono: "Cascadia Mono", ui-monospace, Consolas, "Sarasa Mono SC", monospace;
+
+  /* 间距（4px 基网） */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+
+  /* 圆角与边框 */
+  --radius: 6px;
+  --radius-sm: 4px;
+
+  /* 字号阶梯 */
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px;
+  --fs-xl: 20px; --fs-2xl: 26px;
+
+  --focus-ring: 0 0 0 3px rgba(15, 118, 110, 0.35);
+}
+
+/* ---------- 基础 ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
+
+code, .mono { font-family: var(--font-mono); }
+
+h1, h2, h3 { line-height: 1.3; margin: 0; }
+
+button, input { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 页头 ---------- */
+.app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.title-block h1 {
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.subtitle {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+/* ---------- 标签页 ---------- */
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 3px;
+  background: var(--paper);
+}
+
+.tabs [role="tab"] {
+  border: 0;
+  background: transparent;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.tabs [role="tab"]:hover { color: var(--ink); background: var(--line-soft); }
+
+.tabs [role="tab"][aria-selected="true"] {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- 主区域 ---------- */
+.app-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--sp-5);
+}
+
+[role="tabpanel"][hidden] { display: none; }
+
+.section-title {
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
+
+.btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* ---------- 参数表单 ---------- */
+.param-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+}
+
+.param-form fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.param-form legend {
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  padding: 0;
+}
+
+.field-note {
+  margin: var(--sp-1) 0 var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+}
+
+.param-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+.param-label { font-size: var(--fs-sm); font-weight: 600; }
+
+.param-unit { font-weight: 400; color: var(--ink-2); margin-left: var(--sp-1); }
+
+.param-field input {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+
+.param-field input[readonly] { color: var(--ink-2); }
+
+.param-key {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.form-actions {
+  margin-top: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.form-hint { font-size: var(--fs-sm); color: var(--ink-3); }
+
+/* ---------- 状态区（加载/错误） ---------- */
+.status-region { margin: var(--sp-4) 0; }
+.status-region:empty { margin: 0; }
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--ink-2);
+  font-size: var(--fs-md);
+}
+
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex: none;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
+.error-box {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.error-box .error-text { color: var(--danger); font-weight: 600; }
+.error-box .error-detail { color: var(--ink-2); font-size: var(--fs-sm); width: 100%; }
+
+/* ---------- KPI 卡片 ---------- */
+.kpi-area { margin-top: var(--sp-6); }
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--sp-4);
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.kpi-card .kpi-label { font-size: var(--fs-sm); color: var(--ink-2); }
+
+.kpi-card .kpi-value {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--sp-1);
+  word-break: break-all;
+}
+
+.kpi-card .kpi-unit { font-size: var(--fs-sm); color: var(--ink-2); margin-left: var(--sp-1); }
+
+.kpi-card .kpi-note { font-size: var(--fs-xs); color: var(--ink-3); margin-top: var(--sp-1); word-break: break-all; }
+
+/* ---------- 领域紧凑表（Tab 1） ---------- */
+.domain-tables { margin-top: var(--sp-7); }
+
+.domain-block {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: var(--sp-4);
+  overflow: hidden;
+}
+
+.domain-block > header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper);
+}
+
+.domain-block > header h3 { font-size: var(--fs-md); font-weight: 650; }
+
+.domain-block > header .sheet-tag {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.table-scroll { overflow-x: auto; }
+
+table.data {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-sm);
+}
+
+table.data th, table.data td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+table.data thead th {
+  background: var(--surface);
+  font-weight: 650;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+}
+
+table.data td.num, table.data th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+table.data .item-label { font-weight: 600; }
+
+table.data .item-key {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+table.data td.formula {
+  white-space: normal;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  min-width: 200px;
+  max-width: 340px;
+}
+
+table.data td.cell-err {
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+table.data tr.year-row td { background: var(--accent-bg); font-weight: 600; }
+
+/* ---------- Tab 2：工具条与布局 ---------- */
+.flow-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+.zoom-group { display: flex; gap: var(--sp-2); }
+
+.flow-legend {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  flex: 1 1 280px;
+}
+
+.flow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .flow-layout { grid-template-columns: 1fr; }
+}
+
+/* ---------- 流程图 ---------- */
+.diagram-wrap {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  overflow: auto;
+}
+
+#diagram { width: 100%; height: auto; display: block; }
+
+#diagram .edge {
+  fill: none;
+  stroke: #b9b4a9;
+  stroke-width: 1.5;
+}
+
+#diagram .edge.active { stroke: var(--accent); stroke-width: 2.5; }
+
+#diagram .edge.dim { opacity: 0.25; }
+
+#diagram .node { cursor: pointer; }
+
+#diagram .node rect.body {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.5;
+  rx: 6;
+}
+
+#diagram .node:hover rect.body { stroke: var(--accent); }
+
+#diagram .node:focus { outline: none; }
+#diagram .node:focus-visible rect.body,
+#diagram .node.focus-ring rect.body {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+#diagram .node text { fill: var(--ink); pointer-events: none; }
+
+#diagram .node .node-label { font-size: 14px; font-weight: 650; }
+#diagram .node .node-key { font-size: 10px; fill: var(--ink-3); font-family: var(--font-mono); }
+#diagram .node .node-sheet { font-size: 10px; fill: var(--ink-2); }
+
+#diagram .node.selected rect.body {
+  fill: var(--accent);
+  stroke: var(--accent-ink);
+}
+#diagram .node.selected text { fill: #fff; }
+#diagram .node.selected .node-key,
+#diagram .node.selected .node-sheet { fill: #d7ebe9; }
+
+#diagram .node.up rect.body { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 5 3; }
+#diagram .node.down rect.body { stroke: var(--accent-ink); stroke-width: 2.5; }
+#diagram .node.dim { opacity: 0.35; }
+
+#diagram .layer-caption {
+  font-size: 10px;
+  fill: var(--ink-3);
+  letter-spacing: 0.12em;
+}
+
+/* ---------- 详情面板 ---------- */
+.detail-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-empty {
+  padding: var(--sp-6) var(--sp-5);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.detail-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.detail-panel > header h3 { font-size: var(--fs-lg); font-weight: 650; }
+
+.detail-panel .panel-meta {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  margin-top: var(--sp-1);
+}
+
+.detail-panel .panel-actions { display: flex; gap: var(--sp-2); flex: none; }
+
+.detail-panel .panel-body { overflow: auto; max-height: 70vh; }
+
+.detail-panel .panel-body .table-scroll { max-height: none; }
+
+.detail-panel .dep-line {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+
+/* ---------- 页脚 ---------- */
+.app-footer {
+  max-width: 1280px;
+  margin: var(--sp-7) auto 0;
+  padding: var(--sp-4) var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}

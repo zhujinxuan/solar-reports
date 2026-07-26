@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>光伏项目财务模型 · 计算与流程</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="title-block">
+      <h1>光伏项目财务模型</h1>
+      <p class="subtitle">计算结果 · 公式流程 · v2 管道</p>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="主视图切换">
+      <button type="button" role="tab" id="tab-compute" aria-selected="true" aria-controls="panel-compute">计算</button>
+      <button type="button" role="tab" id="tab-flow" aria-selected="false" aria-controls="panel-flow" tabindex="-1">流程与公式</button>
+    </nav>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- ============ Tab 1: 计算 ============ -->
+  <section id="panel-compute" role="tabpanel" aria-labelledby="tab-compute" tabindex="0">
+
+    <form id="param-form" class="param-form" aria-describedby="param-note">
+      <fieldset>
+        <legend>当前模型参数（只读参考）</legend>
+        <p id="param-note" class="field-note">以下为当前工作簿内置参数，仅供核对；计算在服务端按完整模型执行，修改此处不会影响结果。</p>
+        <div class="param-grid">
+          <label class="param-field">
+            <span class="param-label">装机容量 <span class="param-unit">MW</span></span>
+            <input type="number" name="installed_capacity_mw" value="15" step="any" readonly aria-readonly="true">
+            <code class="param-key">installed_capacity_mw</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">首年满发小时数 <span class="param-unit">h</span></span>
+            <input type="number" name="first_year_full_hours" value="1145" step="any" readonly aria-readonly="true">
+            <code class="param-key">first_year_full_hours</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">标杆上网电价 <span class="param-unit">元/kWh</span></span>
+            <input type="number" name="feed_in_tariff" value="0.401" step="any" readonly aria-readonly="true">
+            <code class="param-key">feed_in_tariff</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">市场化电价 <span class="param-unit">元/kWh</span></span>
+            <input type="number" name="market_tariff" value="0.39" step="any" readonly aria-readonly="true">
+            <code class="param-key">market_tariff</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">长期贷款利率 <span class="param-unit">年利率</span></span>
+            <input type="number" name="loan_rate_long" value="0.0465" step="any" readonly aria-readonly="true">
+            <code class="param-key">loan_rate_long</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">所得税率 <span class="param-unit">比例</span></span>
+            <input type="number" name="income_tax_rate" value="0.25" step="any" readonly aria-readonly="true">
+            <code class="param-key">income_tax_rate</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">资本金比例 <span class="param-unit">比例</span></span>
+            <input type="number" name="equity_ratio" value="0.2" step="any" readonly aria-readonly="true">
+            <code class="param-key">equity_ratio</code>
+          </label>
+        </div>
+      </fieldset>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="run-compute">运行计算</button>
+        <span class="form-hint">调用 POST /api/domains/compute（version = v2）</span>
+      </div>
+    </form>
+
+    <div id="compute-status" class="status-region" aria-live="polite"></div>
+
+    <section id="kpi-area" class="kpi-area" aria-label="关键指标" hidden>
+      <h2 class="section-title">关键指标</h2>
+      <div class="kpi-grid" id="kpi-grid"></div>
+    </section>
+
+    <section id="domain-tables" class="domain-tables" aria-label="各领域计算结果" hidden>
+      <h2 class="section-title">各领域计算结果</h2>
+      <div id="domain-tables-body"></div>
+    </section>
+
+  </section>
+
+  <!-- ============ Tab 2: 流程与公式 ============ -->
+  <section id="panel-flow" role="tabpanel" aria-labelledby="tab-flow" tabindex="0" hidden>
+
+    <div class="flow-toolbar" role="toolbar" aria-label="流程图工具">
+      <div class="zoom-group" role="group" aria-label="缩放">
+        <button type="button" class="btn" id="zoom-in" aria-label="放大流程图">放大 ＋</button>
+        <button type="button" class="btn" id="zoom-out" aria-label="缩小流程图">缩小 －</button>
+        <button type="button" class="btn" id="zoom-reset" aria-label="重置缩放">重置</button>
+      </div>
+      <p class="flow-legend">箭头表示数据依赖方向（上游 → 下游）。Tab 键聚焦节点，Enter / 空格 查看该领域公式明细。</p>
+      <a class="btn btn-primary" id="download-excel" href="/api/download/domains.xlsx?version=v2" download>下载 Excel</a>
+    </div>
+
+    <div id="flow-status" class="status-region" aria-live="polite"></div>
+
+    <div class="flow-layout">
+      <div class="diagram-wrap">
+        <svg id="diagram" role="img" aria-label="领域依赖流程图：参数表、投资计划、还贷、成本、损益、现金流量、财务计划、资产负债、估值结果，共九个领域，按依赖关系从左到右排列"
+             viewBox="0 0 1290 400" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <aside id="detail-panel" class="detail-panel" aria-label="领域公式明细" aria-live="polite">
+        <div class="panel-empty">
+          <p>选择左侧流程图中的领域节点，查看该领域的项目、公式与逐年数值。</p>
+        </div>
+      </aside>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <p>数据来源：服务端 v2 计算管道 · 公式文本来自各领域计算模式（Domain Schema）</p>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>

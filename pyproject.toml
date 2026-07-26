@@ -40,6 +40,14 @@ ignore = ["ANN401", "RUF001", "RUF003"]  # RUF001/RUF003: CJK chars in filenames
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["ANN"]
+"**/solar_v2/param_steps.py" = ["E501"]
+"**/solar_v2/invest.py" = ["E501"]
+"**/solar_v2/debt.py" = ["E501"]
+"**/solar_v2/cost.py" = ["E501"]
+"**/solar_v2/cashflow.py" = ["E501"]
+"**/solar_v2/finplan.py" = ["E501"]
+"**/solar_v2/balance.py" = ["E501"]
+"**/solar_v2/valuation.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "apps"]

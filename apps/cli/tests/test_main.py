@@ -17,6 +17,11 @@ from typer.testing import CliRunner
 runner = CliRunner()
 
 
+def _posix(p: Path) -> str:
+    """Return path as forward-slash string (safe for TOML values)."""
+    return p.as_posix()
+
+
 # ---------------------------------------------------------------------------
 # extract
 # ---------------------------------------------------------------------------
@@ -172,3 +177,107 @@ def test_verify_engine_unavailable_lo() -> None:
     )
     assert "ERROR" in result.stderr
     assert "libreoffice" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# --config TOML
+# ---------------------------------------------------------------------------
+
+
+def test_toml_overrides_default_dag_path(tmp_path: Path) -> None:
+    """TOML config overrides Settings defaults for dag_path."""
+    repo_root = Path.cwd()
+    toml_dag = tmp_path / "custom.dag.yaml"
+    wb_key = '附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx'
+    toml_content = f"""\
+dag_path = "{_posix(toml_dag)}"
+workbook_path = "{_posix(repo_root / 'data' / wb_key)}"
+"""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml_content, encoding="utf-8")
+
+    result = runner.invoke(
+        app, ["--config", str(config_path), "extract"],
+    )
+    assert result.exit_code == 0, f"stderr: {result.stderr}"
+    assert "custom.dag.yaml" in result.stdout
+    assert toml_dag.exists()
+
+
+def test_cli_option_beats_toml(tmp_path: Path) -> None:
+    """CLI --dag overrides the dag_path set in TOML config."""
+    repo_root = Path.cwd()
+    tom_dag = tmp_path / "from_toml.yaml"
+    cli_dag = tmp_path / "from_cli.yaml"
+    wb_key = '附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx'
+    toml_content = f"""\
+dag_path = "{_posix(tom_dag)}"
+workbook_path = "{_posix(repo_root / 'data' / wb_key)}"
+"""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml_content, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "--config", str(config_path),
+            "extract", "--dag", str(cli_dag),
+        ],
+    )
+    assert result.exit_code == 0, f"stderr: {result.stderr}"
+    # CLI value wins
+    assert "from_cli.yaml" in result.stdout
+    assert "from_toml.yaml" not in result.stdout
+    assert cli_dag.exists()
+
+
+def test_toml_unknown_key_exits_2(tmp_path: Path) -> None:
+    """Unknown TOML key → exit 2 with message listing valid keys."""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text("bogus_key = 42\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app, ["--config", str(config_path), "extract"],
+    )
+    assert result.exit_code == 2, (
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert "bogus_key" in result.stderr
+    assert "Valid keys" in result.stderr
+
+
+def test_toml_missing_file(tmp_path: Path) -> None:
+    """Missing TOML file → clear error."""
+    config_path = tmp_path / "nonexistent.toml"
+
+    result = runner.invoke(
+        app, ["--config", str(config_path), "extract"],
+    )
+    assert result.exit_code == 2, (
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert "not found" in result.stderr.lower()
+
+
+def test_verify_with_toml_config(tmp_path: Path) -> None:
+    """verify runs with a TOML config (both paths skipped for speed)."""
+    repo_root = Path.cwd()
+    wb_key = '附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx'
+    toml_content = f"""\
+dag_path = "{_posix(repo_root / 'dag' / 'solar.dag.yaml')}"
+workbook_path = "{_posix(repo_root / 'data' / wb_key)}"
+"""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml_content, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "--config", str(config_path),
+            "verify", "--skip-engine", "--skip-v2",
+        ],
+    )
+    assert result.exit_code == 0, (
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert "All enabled paths: PASS" in result.stdout

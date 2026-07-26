@@ -75,3 +75,33 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
 - Action: wired api.py registry across 9 modules; G2 integration test (no oracle); annotated dag regenerated (6560 nodes, description + code_ref per node); filtered pipeline output to dag node ids after finding 69 phantom emissions （成本 row 17 cells the workbook leaves blank); deleted SolarV2's scratch-file litter (11 root + 4 dag/ files); repo-wide ruff/ty green.
 - Outcome: `solar-cli verify --skip-engine` exit 0 (6560/6560). Phantom emissions now dropped at the pipeline boundary.
 - Learning: NodeValues' domain is the dag node set — enforce at the pipeline boundary, not per slice.
+
+## 2026-07-26 · domain-calculation-schemas
+- Hypothesis: every context module can declare a frozen DomainSchema mapping each sheet's formula/error rows to named items (Chinese label, human-readable formula, explicit input refs), mechanically coverage-checked.
+- Action: pnl.py SCHEMA written as exemplar (35 items); SchemaSlice added the other 8 modules + tests/test_schema.py (count/order, coverage, input resolution, formula non-empty, valuation dual-sheet).
+- Outcome: 9 domains, **329 items, 312/312 formula rows covered, zero gaps**. ruff/ty/pytest green. E501 per-file-ignores scoped to the 8 schema modules (long Chinese formula strings are data).
+- Learning: params:X input refs may mean a Params dataclass field OR a param_steps item key (same domain key) — the test checks both. fmt: off suppresses the formatter, not the linter.
+
+## 2026-07-26 · server-domains-excel
+- Hypothesis: schema + per-domain values + Excel export can layer onto the existing FastAPI app without touching the compute core.
+- Action: solar_server/domains.py — GET /api/schema, POST /api/domains/compute (schema items + dag cells + computed values), GET /api/download/domains.xlsx (openpyxl, one sheet per domain, 项目|公式|单位 header + 年份 row); StaticFiles mount at / with graceful skip; 10 new tests.
+- Outcome: 24/25 tests (1 pre-existing flake); curl-verified: compute 0.34s cached (329 items), xlsx 9 sheets with real values and #REF! as text.
+- Learning: [INFERENCE flagged by Main — fixed post-delivery] the slice's defensive `_load_all_domains() -> list[object]` failed ty; loaders must return the real DomainSchema type. `isinstance` narrowing beats getattr + ignore.
+
+## 2026-07-26 · cli-toml-config
+- Hypothesis: a global `--config PATH` TOML option can drive all Settings fields with clean precedence.
+- Action: typer callback builds effective Settings (TOML over env/defaults) into ctx.obj; commands layer CLI options on top; unknown keys rejected with the valid list; config.example.toml with Chinese comments; 5 tests.
+- Outcome: 12/12 fast tests; precedence proven (CLI --dag beats TOML dag_path); `solar-cli --config config.example.toml compute --version v1` works.
+- Learning: Windows backslash paths break tomllib string values — use Path.as_posix(). pydantic-settings model_dump + kwargs.update chains precedence correctly.
+
+## 2026-07-26 · frontend-two-tab (designer agent)
+- Hypothesis: a no-build vanilla JS + inline SVG app can present both the input→output flow and the domain workflow diagram accessibly, all in Chinese.
+- Action (designer): engineering-report aesthetic (warm paper, single teal accent 5.7:1); Tab 1 计算 with honest read-only param display + KPI cards + 9 domain tables; Tab 2 流程与公式 with 9-node/7-layer SVG dependency graph, keyboard-selectable nodes (role=button, aria-pressed), hover/focus neighbor highlighting, schema detail table (项目|公式|单位|逐列值), zoom buttons, Excel download; mock-harness verified.
+- Outcome: Main's real-browser verification: both tabs work, diagram ARIA correct, download valid. ONE BUG: KPI regex matched benchmark_rate (0.085) for both IRR and 估值结果 cards — headline IRRs actually live in the cashflow domain (equity_irr 现金流量!H61 = 9.56%), and valuation kpi_* items are dual-purpose year-series where first-cell extraction is meaningless. Sent back for explicit per-card item binding.
+- Learning: KPI extraction by regex over labels is fragile against dual-purpose workbook rows — bind headline cards to explicit (domain, item, transform) triples. Read-only honesty (marking params as 只读参考) beats fake interactivity.
+
+## 2026-07-26 · v3-verification-and-commit
+- Hypothesis: real-browser verification of the frontend + full gates close the v3 milestone.
+- Action: uvicorn + headless Chromium drive: Tab 1 compute flow (6 KPI cards, 9 domain tables), Tab 2 diagram (9 nodes/38 edges, click + keyboard Enter selection with aria-pressed, neighbor highlight, zoom buttons, schema detail panel with formulas + per-column values), Excel download (curl + openpyxl read-back); repo-wide ruff/ty; full pytest per-package.
+- Outcome: frontend verified end-to-end after ONE fix — KPI regex had matched benchmark_rate (0.085) for the IRR card; now explicit bindings (资本金IRR = cashflow:equity_irr 9.56%, 股权估值(收益法) = valuation:val_sale_price_inc 12,795万元). Excel: 9 sheets, 项目|公式|单位|年份 rows, #REF! as text. **149/149 tests green** (cli 14, server 25, packages 110). ty/ruff clean.
+- Learning: full-suite pytest hung 40min with 23 dots — Excel COM contention with the RUNNING uvicorn server (COM serializes per machine; tests Dispatch while the server held an instance). Stop the server (or any COM client) before running engine tests.

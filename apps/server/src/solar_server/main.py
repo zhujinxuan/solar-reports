@@ -9,15 +9,27 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import NamedTuple, cast
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from xlsx_core.model import Scalar
 from xlsx_core.settings import Settings
 
+from solar_server.domains import (
+    _build_domains_compute,
+    _build_schema_response,
+    _build_xlsx,
+    _ensure_dag_index,
+)
 from solar_server.schemas import (
     ComputeRequest,
     ComputeResponse,
+    DomainsComputeRequest,
+    DomainsComputeResponse,
+    DomainsSchemaResponse,
     HealthResponse,
     ScalarJSON,
     VerifyRequest,
@@ -144,6 +156,67 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
 
         return _verify(s, engine=engine, skip_engine=skip_engine, skip_v2=skip_v2)
+
+
+    # ── Domain schema + compute ──────────────────────────────
+
+    @app.get("/api/schema", response_model=DomainsSchemaResponse)
+    def api_schema() -> DomainsSchemaResponse:
+        return _build_schema_response()
+
+    @app.post("/api/domains/compute", response_model=DomainsComputeResponse)
+    def api_domains_compute(
+        request: Request,
+        body: DomainsComputeRequest | None = None,
+    ) -> DomainsComputeResponse:
+        version = body.version if body is not None else "v2"
+        if version not in ("v1", "v2"):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown version: {version!r}. Use 'v1' or 'v2'.",
+            )
+        s = settings or Settings()
+        dag_nodes = _ensure_dag_index(request, s)
+        cached = _cached_compute(version, str(s.workbook_path), str(s.dag_path))
+        return _build_domains_compute(version, dag_nodes, cached)
+
+    @app.get("/api/download/domains.xlsx")
+    def api_download_xlsx(
+        request: Request,
+        version: str = "v2",
+    ) -> StreamingResponse:
+        if version not in ("v1", "v2"):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown version: {version!r}. Use 'v1' or 'v2'.",
+            )
+        s = settings or Settings()
+        dag_nodes = _ensure_dag_index(request, s)
+        cached = _cached_compute(version, str(s.workbook_path), str(s.dag_path))
+        buf = _build_xlsx(dag_nodes, cached)
+
+        from urllib.parse import quote
+
+        filename = "domains.xlsx"
+        content_disposition = (
+            f"attachment; filename*=utf-8''{quote(filename)}"
+        )
+        return StreamingResponse(
+            buf,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": content_disposition},
+        )
+
+    # ── Static frontend mount ──────────────────────────────
+
+    # Resolve the static directory relative to the server package
+    _static_dir = Path(__file__).parent.parent.parent / "static"
+    if _static_dir.is_dir():
+        app.mount(
+            "/",
+            StaticFiles(directory=str(_static_dir), html=True),
+            name="static",
+        )
 
     @app.middleware("http")
     async def _store_settings(

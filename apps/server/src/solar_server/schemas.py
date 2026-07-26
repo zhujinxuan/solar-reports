@@ -158,3 +158,94 @@ class VerifyResponse(BaseModel):
     path_1_1: Path11Result | Path11Skipped
     path_1_2: Path12Result | None = None
     ok: bool
+
+
+# ---------------------------------------------------------------------------
+# Domain schemas — /api/schema, /api/domains/compute
+# ---------------------------------------------------------------------------
+
+
+class ItemSchemaResponse(BaseModel):
+    """A single domain item in the schema response."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    label: str
+    unit: str
+    formula: str
+    inputs: tuple[str, ...]
+    rows: tuple[int, ...]
+
+
+class DomainSchemaResponse(BaseModel):
+    """One domain in the schema response."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    sheet: str
+    label: str
+    depends_on: tuple[str, ...]
+    items: tuple[ItemSchemaResponse, ...]
+
+
+class DomainsSchemaResponse(BaseModel):
+    """GET /api/schema response."""
+
+    model_config = ConfigDict(frozen=True)
+
+    domains: tuple[DomainSchemaResponse, ...]
+
+
+class CellValue(BaseModel):
+    """One cell value from a domain item."""
+
+    model_config = ConfigDict(frozen=True)
+
+    node: str
+    col: str
+    row: int
+    value: ScalarJSON
+
+
+class ItemCell(BaseModel):
+    """A domain item with its cell values."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    label: str
+    unit: str
+    formula: str
+    inputs: tuple[str, ...]
+    cells: tuple[CellValue, ...]
+
+
+class DomainComputeResponse(BaseModel):
+    """One domain in the /api/domains/compute response."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    label: str
+    sheet: str
+    depends_on: tuple[str, ...]
+    items: tuple[ItemCell, ...]
+
+
+class DomainsComputeRequest(BaseModel):
+    """POST /api/domains/compute body."""
+
+    model_config = ConfigDict(frozen=True)
+
+    version: str = "v2"
+
+
+class DomainsComputeResponse(BaseModel):
+    """POST /api/domains/compute response."""
+
+    model_config = ConfigDict(frozen=True)
+
+    version: str
+    domains: tuple[DomainComputeResponse, ...]

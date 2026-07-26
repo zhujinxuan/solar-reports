@@ -1,0 +1,29 @@
+# config.example.toml — solar-cli 配置文件示例
+#
+# 所有字段均为可选。优先级：命令行选项 > TOML > XLSX_ 环境变量 > 默认值。
+# 路径相对于本 TOML 文件所在目录解析；也可使用绝对路径。
+#
+# 用法：
+#   solar-cli --config config.toml compute --version v1
+#   solar-cli --config config.toml verify --skip-engine --skip-v2
+
+# 光伏项目经济评价模型工作簿路径
+workbook_path = "../../data/附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx"
+
+# solar-v1 DAG 定义文件路径
+dag_path = "../../dag/solar.dag.yaml"
+
+# solar-v2 带标注的 DAG 定义文件路径
+dag_v2_path = "../../dag/solar.v2.annotated.yaml"
+
+# 数值比较相对容差（路径 1.1 / 1.2）
+rel_tol = 1e-6
+
+# 数值比较绝对容差
+abs_tol = 1e-9
+
+# 重算引擎：excel-com | libreoffice | formulas-pkg
+recalc_engine = "excel-com"
+
+# LibreOffice 可执行文件路径（仅 recalc_engine = "libreoffice" 时需要）
+libreoffice_path = "C:/Program Files/LibreOffice/program/soffice.exe"

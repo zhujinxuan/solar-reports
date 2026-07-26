@@ -612,3 +612,318 @@ UNITS_FINE: dict[tuple[str, int], FineStepFn] = {
         _row29_distributable_col, _row29_distributable_af
     ),
 }
+
+
+# ── Domain calculation schema ─────────────────────────────────────
+
+from solar_v2.schema import DomainSchema, ItemSchema  # noqa: E402
+
+SCHEMA = DomainSchema(
+    key="pnl",
+    sheet="损益",
+    label="损益表 (PnL)",
+    depends_on=("params", "cost", "finplan", "balance"),
+    items=(
+        ItemSchema(
+            key="year_labels",
+            label="运营年度",
+            unit="-",
+            formula="参数表 years row (2021..2045); D4/E4 are #REF! errors",
+            inputs=("params:years",),
+            rows=(4,),
+        ),
+        ItemSchema(
+            key="power_generation",
+            label="年发电量",
+            unit="MWh",
+            formula=(
+                "installed_capacity_mw × first_year_full_hours "
+                "× degradation_factor × load_rate"
+            ),
+            inputs=("params:installed_capacity_mw", "params:first_year_full_hours"),
+            rows=(5,),
+        ),
+        ItemSchema(
+            key="guaranteed_sales",
+            label="保障利用小时售电量",
+            unit="MWh",
+            formula="min(guaranteed_hours × installed_capacity_mw, power_generation)",
+            inputs=("power_generation", "params:guaranteed_hours"),
+            rows=(47,),
+        ),
+        ItemSchema(
+            key="market_sales",
+            label="市场化售电量",
+            unit="MWh",
+            formula="power_generation − guaranteed_sales",
+            inputs=("power_generation", "guaranteed_sales"),
+            rows=(48,),
+        ),
+        ItemSchema(
+            key="blended_price",
+            label="综合上网电价(含税)",
+            unit="元/kWh",
+            formula=(
+                "(guaranteed_sales / generation) × feed_in_tariff "
+                "+ (market_sales / generation) × market_tariff"
+            ),
+            inputs=("guaranteed_sales", "market_sales", "params:feed_in_tariff"),
+            rows=(49,),
+        ),
+        ItemSchema(
+            key="on_grid_price_incl_vat",
+            label="上网电价(含税)",
+            unit="元/kWh",
+            formula="blended_price",
+            inputs=("blended_price",),
+            rows=(6,),
+        ),
+        ItemSchema(
+            key="on_grid_price_excl_vat",
+            label="上网电价(不含税)",
+            unit="元/kWh",
+            formula=(
+                "on_grid_price_incl_vat ÷ (1 + vat_rate); "
+                "frozen at year-2 value from year 3 on"
+            ),
+            inputs=("on_grid_price_incl_vat", "params:vat_rate"),
+            rows=(7,),
+        ),
+        ItemSchema(
+            key="sales_revenue",
+            label="销售收入",
+            unit="万元",
+            formula="power_generation × on_grid_price_excl_vat",
+            inputs=("power_generation", "on_grid_price_excl_vat"),
+            rows=(8,),
+        ),
+        ItemSchema(
+            key="output_vat",
+            label="销项增值税",
+            unit="万元",
+            formula="sales_revenue × vat_rate",
+            inputs=("sales_revenue", "params:vat_rate"),
+            rows=(37,),
+        ),
+        ItemSchema(
+            key="vat_credit_balance",
+            label="进项税留抵余额",
+            unit="万元",
+            formula=(
+                "max(0, deductible_vat_construction "
+                "− cumulative output_vat offset)"
+            ),
+            inputs=("output_vat", "params:deductible_vat_construction"),
+            rows=(38,),
+        ),
+        ItemSchema(
+            key="vat_credit_used",
+            label="进项税抵扣额",
+            unit="万元",
+            formula="min(output_vat, prior vat_credit_balance)",
+            inputs=("output_vat", "vat_credit_balance"),
+            rows=(39,),
+        ),
+        ItemSchema(
+            key="vat_payable",
+            label="应缴增值税",
+            unit="万元",
+            formula=(
+                "(output_vat − vat_credit_used) "
+                "— half during credit-recovery years"
+            ),
+            inputs=("output_vat", "vat_credit_used"),
+            rows=(40,),
+        ),
+        ItemSchema(
+            key="city_maintenance_tax",
+            label="城市维护建设税",
+            unit="万元",
+            formula="surcharge_base × city_maintenance_tax_rate",
+            inputs=("surcharge_base", "params:city_maintenance_tax_rate"),
+            rows=(10,),
+        ),
+        ItemSchema(
+            key="education_surcharge",
+            label="教育费附加",
+            unit="万元",
+            formula="surcharge_base × education_surcharge_rate",
+            inputs=("surcharge_base", "params:education_surcharge_rate"),
+            rows=(11,),
+        ),
+        ItemSchema(
+            key="vat_surcharge_total",
+            label="税金及附加合计",
+            unit="万元",
+            formula="city_maintenance_tax + education_surcharge",
+            inputs=("city_maintenance_tax", "education_surcharge"),
+            rows=(9,),
+        ),
+        ItemSchema(
+            key="surcharge_base",
+            label="附加税计税基础",
+            unit="万元",
+            formula="(output_vat − vat_credit_used) ÷ 2",
+            inputs=("output_vat", "vat_credit_used"),
+            rows=(41,),
+        ),
+        ItemSchema(
+            key="vat_refund",
+            label="增值税即征即退",
+            unit="万元",
+            formula=(
+                "0 for all operating years "
+                "(vat_exempt_year 2020 precedes operation; dead branch)"
+            ),
+            inputs=("params:vat_exempt_year",),
+            rows=(12,),
+        ),
+        ItemSchema(
+            key="total_cost",
+            label="总成本费用",
+            unit="万元",
+            formula="cost:total_operating_cost (成本!21 row)",
+            inputs=("cost:total_operating_cost",),
+            rows=(14,),
+        ),
+        ItemSchema(
+            key="total_profit",
+            label="利润总额",
+            unit="万元",
+            formula="sales_revenue − vat_surcharge_total − total_cost + vat_refund",
+            inputs=("sales_revenue", "vat_surcharge_total", "total_cost", "vat_refund"),
+            rows=(15,),
+        ),
+        ItemSchema(
+            key="cum_profit",
+            label="累计利润",
+            unit="万元",
+            formula="cumulative total_profit; AF16 = MIN over years",
+            inputs=("total_profit",),
+            rows=(16,),
+        ),
+        ItemSchema(
+            key="tax_rate_schedule",
+            label="所得税税率(优惠阶梯)",
+            unit="%",
+            formula="years 1-3: 0, years 4-6: half, then full income_tax_rate",
+            inputs=("params:income_tax_rate",),
+            rows=(20,),
+        ),
+        ItemSchema(
+            key="income_tax",
+            label="所得税",
+            unit="万元",
+            formula="taxable income after loss carry-forward × tax_rate_schedule",
+            inputs=("total_profit", "loss_carry_forward", "tax_rate_schedule"),
+            rows=(21,),
+        ),
+        ItemSchema(
+            key="loss_compensation",
+            label="弥补亏损",
+            unit="万元",
+            formula="offset of prior losses against current profit before tax",
+            inputs=("total_profit", "loss_carry_forward"),
+            rows=(22,),
+        ),
+        ItemSchema(
+            key="loss",
+            label="亏损额",
+            unit="万元",
+            formula="max(0, −total_profit)",
+            inputs=("total_profit",),
+            rows=(23,),
+        ),
+        ItemSchema(
+            key="loss_carry_forward",
+            label="亏损结转",
+            unit="万元",
+            formula="prior unrecouped losses carried into this year's tax computation",
+            inputs=("loss", "loss_compensation"),
+            rows=(24,),
+        ),
+        ItemSchema(
+            key="tax_echo",
+            label="所得税(回显)",
+            unit="万元",
+            formula="income_tax echoed for downstream sheets",
+            inputs=("income_tax",),
+            rows=(25,),
+        ),
+        ItemSchema(
+            key="net_profit",
+            label="净利润",
+            unit="万元",
+            formula="max(0, total_profit − loss_compensation − income_tax)",
+            inputs=("total_profit", "loss_compensation", "income_tax"),
+            rows=(26,),
+        ),
+        ItemSchema(
+            key="surplus_reserve",
+            label="盈余公积金",
+            unit="万元",
+            formula="net_profit × surplus_reserve_ratio when cumulative profit > 0",
+            inputs=("net_profit", "params:surplus_reserve_ratio"),
+            rows=(27,),
+        ),
+        ItemSchema(
+            key="distributable_profit",
+            label="可分配利润",
+            unit="万元",
+            formula="net_profit − surplus_reserve when cumulative profit > 0",
+            inputs=("net_profit", "surplus_reserve"),
+            rows=(29,),
+        ),
+        ItemSchema(
+            key="dividend",
+            label="分红",
+            unit="万元",
+            formula="finplan:profit_distribution (财务计划!31 row)",
+            inputs=("finplan:profit_distribution",),
+            rows=(32,),
+        ),
+        ItemSchema(
+            key="undistributed_profit",
+            label="未分配利润",
+            unit="万元",
+            formula="distributable_profit − dividend + loss-side adjustments",
+            inputs=("distributable_profit", "dividend"),
+            rows=(33,),
+        ),
+        ItemSchema(
+            key="depreciation_echo",
+            label="折旧(回显)",
+            unit="万元",
+            formula="cost:depreciation (成本!28 row)",
+            inputs=("cost:depreciation",),
+            rows=(36,),
+        ),
+        ItemSchema(
+            key="adjusted_profit",
+            label="调整后利润(估值口径)",
+            unit="万元",
+            formula=(
+                "net_profit + cost interest × (1−tax) "
+                "− balance-sheet debt × benchmark rate"
+            ),
+            inputs=("net_profit", "balance:total_liabilities"),
+            rows=(43,),
+        ),
+        ItemSchema(
+            key="row13_total",
+            label="合计行13",
+            unit="万元",
+            formula="row total (0)",
+            inputs=(),
+            rows=(13,),
+        ),
+        ItemSchema(
+            key="row28_total",
+            label="合计行28",
+            unit="万元",
+            formula="row total (0)",
+            inputs=(),
+            rows=(28,),
+        ),
+    ),
+)

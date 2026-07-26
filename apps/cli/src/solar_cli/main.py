@@ -4,6 +4,10 @@ Commands:
   extract   — workbook → dag/solar.dag.yaml (xlsx-core)
   compute   — run solar-v1 or solar-v2, dump node values
   verify    — three-way golden check: v1 vs recalc engine, v2 vs v1
+
+Global option:
+  --config PATH  — TOML config file overriding Settings defaults.
+                   Precedence: CLI option > TOML > XLSX_ env > default.
 """
 
 from __future__ import annotations
@@ -12,6 +16,7 @@ import csv
 import json
 import tempfile
 import time
+import tomllib
 from pathlib import Path
 from typing import Annotated
 
@@ -41,6 +46,30 @@ app = typer.Typer(
 _ERROR_STRINGS: frozenset[str] = frozenset(
     {"#REF!", "#DIV/0!", "#VALUE!", "#N/A", "#NAME?", "#NULL!", "#NUM!"}
 )
+
+# TOML config: valid Settings keys (mapping TOML key → Settings field).
+# Keys NOT in this set are rejected with a clear error listing valid ones.
+_VALID_TOML_KEYS: frozenset[str] = frozenset({
+    "workbook_path",
+    "dag_path",
+    "dag_v2_path",
+    "rel_tol",
+    "abs_tol",
+    "recalc_engine",
+    "libreoffice_path",
+})
+
+# TOML keys whose string values are resolved as Paths relative to the
+# config file's parent directory.
+_PATH_KEYS: frozenset[str] = frozenset({
+    "workbook_path",
+    "dag_path",
+    "dag_v2_path",
+    "libreoffice_path",
+})
+
+# Context object key for the base Settings (post-TOML, pre-CLI-overrides).
+_CTX_SETTINGS_KEY = "settings"
 
 
 def _parse_cached_value(raw: object) -> Scalar:
@@ -84,9 +113,77 @@ def _load_recalced_values(
     return result
 
 
+def _load_toml_config(config_path: Path) -> dict[str, object]:
+    """Load and validate a TOML config file.
+
+    Returns a dict of Settings field overrides with Path keys resolved
+    relative to the config file's parent directory.
+    """
+    if not config_path.exists():
+        typer.echo(f"Config file not found: {config_path}", err=True)
+        raise typer.Exit(code=2)
+
+    try:
+        with open(config_path, "rb") as f:
+            data: dict[str, object] = tomllib.load(f)
+    except tomllib.TOMLDecodeError as exc:
+        typer.echo(f"Invalid TOML in {config_path}: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    unknown = set(data.keys()) - _VALID_TOML_KEYS
+    if unknown:
+        typer.echo(
+            f"Unknown config key(s): {', '.join(sorted(unknown))}. "
+            f"Valid keys: {', '.join(sorted(_VALID_TOML_KEYS))}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    config_dir = config_path.parent.resolve()
+    result: dict[str, object] = {}
+    for key, value in data.items():
+        if key in _PATH_KEYS and isinstance(value, str):
+            result[key] = (config_dir / value).resolve()
+        else:
+            result[key] = value
+    return result
+
+
+# ---------------------------------------------------------------------------
+# callback — global --config
+# ---------------------------------------------------------------------------
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            "--config",
+            help="Path to TOML config file",
+            exists=False,  # we handle existence in _load_toml_config
+        ),
+    ] = None,
+) -> None:
+    """solar-cli — consume-xlsx-as-software toolchain CLI.
+
+    Precedence: CLI option > TOML config > XLSX_ env var > default.
+    """
+    ctx.ensure_object(dict)
+
+    if config is not None:
+        toml_overrides = _load_toml_config(config)
+        # Base: env > default, then TOML overrides on top.
+        base_kwargs = Settings().model_dump()
+        base_kwargs.update(toml_overrides)
+        ctx.obj[_CTX_SETTINGS_KEY] = Settings(**base_kwargs)
+    else:
+        ctx.obj[_CTX_SETTINGS_KEY] = Settings()
 
 
 def _build_settings(
+    base: Settings | None = None,
     workbook: Path | None = None,
     dag: Path | None = None,
     rel_tol: float | None = None,
@@ -94,7 +191,11 @@ def _build_settings(
     engine: str | None = None,
     libreoffice_path: Path | None = None,
 ) -> Settings:
-    """Build Settings from CLI overrides, falling back to defaults."""
+    """Build final Settings: CLI overrides on top of base (or defaults).
+
+    When `base` is supplied (from ctx.obj), it already includes TOML >
+    env > default.  CLI overrides are layered on top.
+    """
     overrides: dict[str, object] = {}
     if workbook is not None:
         overrides["workbook_path"] = workbook
@@ -108,7 +209,16 @@ def _build_settings(
         overrides["recalc_engine"] = engine
     if libreoffice_path is not None:
         overrides["libreoffice_path"] = libreoffice_path
-    return Settings(**overrides) if overrides else Settings()  # ty: ignore[invalid-argument-type]
+
+    if overrides:
+        if base is not None:
+            kwargs = base.model_dump()
+            kwargs.update(overrides)
+            return Settings(**kwargs)
+        return Settings(**overrides)  # ty: ignore[invalid-argument-type]
+    if base is not None:
+        return base
+    return Settings()
 
 
 def _resolve_engine(
@@ -116,33 +226,25 @@ def _resolve_engine(
 ) -> tuple[RecalcEngine | None, str | None]:
     """Resolve an engine name to an adapter instance.
 
-    Returns (adapter, error_message) — exactly one is non-None.
-    Availability checks are lightweight (import-only); actual dispatch
-    failures surface during recalc.
+    Returns (adapter, None) on success or (None, error_message) on failure.
     """
-    name = name.strip()
     if name == "excel-com":
         try:
-            __import__("pythoncom")
-            __import__("win32com.client")
-        except ImportError:
-            return None, "pywin32 not installed — install with: uv add pywin32"
-        return ExcelComRecalc(), None
+            return ExcelComRecalc(), None
+        except Exception as exc:
+            return None, str(exc)
     if name == "libreoffice":
-        soffice = libreoffice_path
-        if not soffice.exists():
-            return None, f"LibreOffice not found at {soffice}"
-        return LibreOfficeRecalc(soffice), None
+        if not libreoffice_path.exists():
+            return None, (
+                f"LibreOffice not found at {libreoffice_path}. "
+                "Set XLSX_LIBREOFFICE_PATH or libreoffice_path in config."
+            )
+        return LibreOfficeRecalc(libreoffice_path), None
     if name == "formulas-pkg":
-        try:
-            __import__("formulas")
-        except ImportError:
-            return None, "formulas package not installed"
         return FormulasPkgRecalc(), None
     return (
         None,
-        f"Unknown engine: {name!r}"
-        " — choose excel-com | libreoffice | formulas-pkg",
+        f"Unknown engine {name!r}. Valid: excel-com, libreoffice, formulas-pkg",
     )
 
 
@@ -152,9 +254,9 @@ def _print_mismatches(
     max_show: int = 20,
 ) -> None:
     """Print mismatch summary."""
-    typer.echo(f"\n{label}: {len(mismatches)} mismatch(es)")
+    typer.echo(f"\n{label}: {len(mismatches)} MISMATCH(ES)")
     for nid, expected, got in mismatches[:max_show]:
-        typer.echo(f"  {nid}: expected={expected!r} got={got!r}")
+        typer.echo(f"  {nid}: expected={expected!r}, got={got!r}")
     if len(mismatches) > max_show:
         typer.echo(f"  ... and {len(mismatches) - max_show} more")
 
@@ -170,9 +272,9 @@ def _scalars_match(
 # commands
 # ---------------------------------------------------------------------------
 
-
 @app.command()
 def extract(
+    ctx: typer.Context,
     workbook: Annotated[
         Path | None,
         typer.Option(
@@ -196,7 +298,8 @@ def extract(
     literal / error, detects year-series column patterns, and writes the full
     node set to disk.
     """
-    settings = _build_settings(workbook=workbook, dag=dag)
+    base: Settings = ctx.obj[_CTX_SETTINGS_KEY]
+    settings = _build_settings(base, workbook=workbook, dag=dag)
     t0 = time.perf_counter()
     dag_obj = extract_dag(settings)
     elapsed = time.perf_counter() - t0
@@ -208,6 +311,7 @@ def extract(
 
 @app.command()
 def compute(
+    ctx: typer.Context,
     version: Annotated[
         str,
         typer.Option(
@@ -246,7 +350,8 @@ def compute(
         typer.echo(f"Invalid --version: {version!r}. Use v1 or v2.", err=True)
         raise typer.Exit(code=1)
 
-    settings = _build_settings(workbook=workbook, dag=dag)
+    base: Settings = ctx.obj[_CTX_SETTINGS_KEY]
+    settings = _build_settings(base, workbook=workbook, dag=dag)
     t0 = time.perf_counter()
 
     if version == "v1":
@@ -305,13 +410,14 @@ def compute(
 
 @app.command()
 def verify(
+    ctx: typer.Context,
     engine: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--engine",
             help="Recalc engine for path 1.1: excel-com | libreoffice | formulas-pkg",
         ),
-    ] = "excel-com",
+    ] = None,
     workbook: Annotated[
         Path | None,
         typer.Option(
@@ -368,7 +474,9 @@ def verify(
     Exit 1 on diffs (first ~20 mismatches printed).
     Exit 2 if a required engine is unavailable.
     """
+    base: Settings = ctx.obj[_CTX_SETTINGS_KEY]
     settings = _build_settings(
+        base,
         workbook=workbook,
         dag=dag,
         rel_tol=rel_tol,
@@ -399,10 +507,14 @@ def verify(
 
     # --- Path 1.1: recalc engine ---
     if not skip_engine:
-        adapter, err_msg = _resolve_engine(engine, settings.libreoffice_path)
+        engine_name = settings.recalc_engine
+        adapter, err_msg = _resolve_engine(
+            engine_name, settings.libreoffice_path
+        )
         if err_msg is not None:
             typer.echo(
-                f"ERROR: Engine {engine!r} unavailable: {err_msg}", err=True
+                f"ERROR: Engine {engine_name!r} unavailable: {err_msg}",
+                err=True,
             )
             raise typer.Exit(code=2)
         assert adapter is not None  # guaranteed by _resolve_engine contract
@@ -517,3 +629,7 @@ def verify(
         typer.echo("\nAll enabled paths: PASS")
 
     raise typer.Exit(code=exit_code)
+
+
+if __name__ == "__main__":
+    app()

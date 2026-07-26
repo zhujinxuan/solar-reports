@@ -717,6 +717,8 @@ source = { editable = "apps/server" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx2" },
+    { name = "openpyxl" },
+    { name = "pyyaml" },
     { name = "solar-v1" },
     { name = "solar-v2" },
     { name = "uvicorn" },
@@ -727,6 +729,8 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.140.0" },
     { name = "httpx2", specifier = ">=2.9.1" },
+    { name = "openpyxl", specifier = ">=3.1" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "solar-v1", editable = "packages/solar-v1" },
     { name = "solar-v2", editable = "packages/solar-v2" },
     { name = "uvicorn", specifier = ">=0.51.0" },
