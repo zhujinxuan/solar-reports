@@ -1,0 +1,45 @@
+[project]
+name = "consume-xlsx-as-software"
+version = "0.1.0"
+description = "Turn Excel economic-evaluation workbooks into real software"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "xlsx-core",
+    "solar-v1",
+    "solar-v2",
+    "solar-cli",
+    "solar-server",
+    "pyyaml>=6.0.3",
+]
+
+[tool.uv.sources]
+xlsx-core = { workspace = true }
+solar-v1 = { workspace = true }
+solar-v2 = { workspace = true }
+solar-cli = { workspace = true }
+solar-server = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.0",
+    "ty>=0.0.63",
+]
+
+[tool.ruff]
+target-version = "py313"
+src = ["packages", "apps"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ANN", "TID"]
+ignore = ["ANN401", "RUF001", "RUF003"]  # RUF001/RUF003: CJK chars in filenames/comments
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["ANN"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "apps"]

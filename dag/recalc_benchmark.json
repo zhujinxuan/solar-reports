@@ -1,0 +1,33 @@
+{
+  "engines": [
+    {
+      "engine": "libreoffice",
+      "ok": true,
+      "wall_seconds": 77.12379870002042,
+      "mismatch_count": 2,
+      "total_compared": 5059,
+      "errors": [],
+      "recalced_path": "C:\\Users\\zhu_j\\AppData\\Local\\Temp\\recalc_bench_u6dz8u4z\\libreoffice\\recalc_附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx"
+    },
+    {
+      "engine": "formulas-pkg",
+      "ok": true,
+      "wall_seconds": 24.828334599995287,
+      "mismatch_count": 5059,
+      "total_compared": 5059,
+      "errors": [],
+      "recalced_path": "C:\\Users\\zhu_j\\AppData\\Local\\Temp\\recalc_bench_u6dz8u4z\\formulas-pkg\\附件4：平价上网光伏发电项目经济评价模型（第7.1版）.formulas.values.txt"
+    },
+    {
+      "engine": "excel-com",
+      "ok": true,
+      "wall_seconds": 9.604349200002616,
+      "mismatch_count": 0,
+      "total_compared": 5059,
+      "errors": [],
+      "recalced_path": "C:\\Users\\zhu_j\\AppData\\Local\\Temp\\recalc_bench_u6dz8u4z\\excel-com\\附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx"
+    }
+  ],
+  "workbook": "C:\\Users\\zhu_j\\workspace\\experiments\\data\\附件4：平价上网光伏发电项目经济评价模型（第7.1版）.xlsx",
+  "formula_cells": 5059
+}
