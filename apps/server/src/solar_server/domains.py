@@ -12,11 +12,11 @@ import logging
 from typing import cast
 
 import openpyxl
-import yaml
 from fastapi import Request
 from solar_v2.schema import DomainSchema
 from xlsx_core.model import Scalar
 from xlsx_core.settings import Settings
+from xlsx_core.yamlutil import load_dag_doc
 
 from solar_server.schemas import (
     CellValue,
@@ -52,7 +52,7 @@ class _NodeInfo:
 def _load_dag_nodes(dag_path: str) -> list[_NodeInfo]:
     """Parse dag YAML and return formula/error nodes."""
     with open(dag_path, encoding="utf-8") as fh:
-        dag = yaml.safe_load(fh)
+        dag = load_dag_doc(fh.name)
     nodes: list[_NodeInfo] = []
     for n in dag["nodes"]:
         if n["type"] in ("formula", "error"):

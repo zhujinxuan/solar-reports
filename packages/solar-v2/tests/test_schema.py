@@ -6,17 +6,16 @@ import os
 from collections import defaultdict
 from typing import get_type_hints
 
-import yaml
 from solar_v2.params import Params
 from solar_v2.schema import all_domains
+from xlsx_core.yamlutil import load_dag_doc
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
 def _dag_formula_rows(dag_path: str) -> dict[str, set[int]]:
     """Return {sheet: set(row)} for formula/error nodes."""
-    with open(dag_path) as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(dag_path)
     out: dict[str, set[int]] = defaultdict(set)
     for node in dag["nodes"]:
         if node["type"] in ("formula", "error"):

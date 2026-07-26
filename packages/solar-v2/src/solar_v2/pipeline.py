@@ -8,10 +8,10 @@ where view reads every value computed so far (plus all literal givens).
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import Protocol
+from typing import Protocol, cast
 
-import yaml
 from xlsx_core.model import NodeValues, Scalar
+from xlsx_core.yamlutil import load_dag_doc
 
 from solar_v2.params import Params
 from solar_v2.schedule import STEPS, Step
@@ -62,18 +62,16 @@ class _Store:
 
 def load_literals(dag_path: str) -> dict[str, Scalar]:
     """All literal-node values (the givens) from the extracted dag."""
-    with open(dag_path, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(dag_path)
     out: dict[str, Scalar] = {}
     for n in dag["nodes"]:
         if n["type"] == "literal":
-            out[n["id"]] = n["value"]
+            out[n["id"]] = cast(Scalar, n["value"])
     return out
 
 
 def _dag_node_ids(dag_path: str) -> set[str]:
-    with open(dag_path, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(dag_path)
     return {n["id"] for n in dag["nodes"]}
 
 

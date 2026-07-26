@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import yaml
+from xlsx_core.yamlutil import load_dag_doc
 
 from solar_v2.cols import col_letters
 
@@ -100,8 +100,7 @@ class Params:
 
 def _literals(dag_path: str) -> dict[str, object]:
     """Load ONLY literal-node values from the extracted dag (the givens)."""
-    with open(dag_path, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(dag_path)
     out: dict[str, object] = {}
     for n in dag["nodes"]:
         if n["type"] == "literal":

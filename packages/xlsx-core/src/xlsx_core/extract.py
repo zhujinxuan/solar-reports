@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
 from xlsx_core.ast import Expr
 from xlsx_core.loader import WorkbookSnapshot, load_workbook
 from xlsx_core.model import (
@@ -23,6 +21,7 @@ from xlsx_core.model import (
 )
 from xlsx_core.parser import ParseError, parse
 from xlsx_core.settings import Settings
+from xlsx_core.yamlutil import dump_doc
 from xlsx_core.year_series import SeriesReport, detect_year_series
 
 
@@ -195,6 +194,7 @@ def _dag_to_yaml_dict(dag: WorkbookDag) -> dict:
     return {
         "version": dag.version,
         "source": dag.source,
+        "defined_names": dict(dag.defined_names),
         "nodes": nodes_list,
     }
 
@@ -206,14 +206,6 @@ def _write_dag_yaml(dag: WorkbookDag, path: Path) -> None:
     # Ensure parent directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(str(path), "w", encoding="utf-8") as f:
-        yaml.dump(
-            dag_dict,
-            f,
-            default_flow_style=False,
-            allow_unicode=True,
-            sort_keys=False,
-            width=120,
-        )
+    dump_doc(dag_dict, path)
 
     print(f"Written {len(dag.nodes)} nodes to {path}")

@@ -13,7 +13,6 @@ from pathlib import Path
 from types import ModuleType
 from typing import cast
 
-import yaml
 from solar_v2 import (
     balance,
     cashflow,
@@ -28,6 +27,7 @@ from solar_v2 import (
 from solar_v2.params import Params
 from solar_v2.pipeline import ValueView
 from xlsx_core.model import Scalar
+from xlsx_core.yamlutil import dump_doc, load_dag_doc
 
 REPO = Path(__file__).resolve().parents[3]
 DAG_IN = REPO / "dag" / "solar.dag.yaml"
@@ -80,8 +80,7 @@ def _step_fn_map() -> dict[tuple[str, int], str]:
 
 
 def main() -> None:
-    with open(DAG_IN, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(DAG_IN)
     labels: dict[tuple[str, int], str] = {}
     for n in dag["nodes"]:
         if (
@@ -122,8 +121,7 @@ def main() -> None:
         "annotated": "solar-v2 domain distillation (description + code_ref per node)",
         "nodes": out_nodes,
     }
-    with open(DAG_OUT, "w", encoding="utf-8") as f:
-        yaml.safe_dump(doc, f, allow_unicode=True, sort_keys=False)
+    dump_doc(doc, DAG_OUT)
     print(f"wrote {DAG_OUT} with {len(out_nodes)} annotated nodes")
 
 

@@ -8,21 +8,21 @@ before the other slices land. The production compute() path never uses this.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from typing import cast
 
-import yaml
 from solar_v2.params import Params
 from solar_v2.pipeline import FineStepFn, ValueView
 from solar_v2.schedule import STEPS, Step
 from xlsx_core.model import Scalar
+from xlsx_core.yamlutil import load_dag_doc
 
 DAG_PATH = "dag/solar.dag.yaml"
 StepFn = Callable[[Params, ValueView], Mapping[str, Scalar]]
 
 
 def load_cached() -> dict[str, Scalar]:
-    with open(DAG_PATH, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
-    return {n["id"]: n["value"] for n in dag["nodes"]}
+    dag = load_dag_doc(DAG_PATH)
+    return {n["id"]: cast(Scalar, n["value"]) for n in dag["nodes"]}
 
 
 def oracle_registry(real_sheets: set[str]) -> dict[Step, StepFn]:
@@ -30,8 +30,7 @@ def oracle_registry(real_sheets: set[str]) -> dict[Step, StepFn]:
     sheet is NOT in real_sheets. Values come from dag cached cells (oracle).
     """
     by_step: dict[Step, list[tuple[str, Scalar]]] = {}
-    with open(DAG_PATH, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(DAG_PATH)
     step_of: dict[tuple[str, int], Step] = {}
     for s in STEPS:
         if len(s) == 3:
@@ -45,7 +44,7 @@ def oracle_registry(real_sheets: set[str]) -> dict[Step, StepFn]:
         step = step_of.get((n["sheet"], n["row"]))
         if step is None or n["sheet"] in real_sheets:
             continue
-        by_step.setdefault(step, []).append((n["id"], n["value"]))
+        by_step.setdefault(step, []).append((n["id"], cast(Scalar, n["value"])))
 
     def make_emitter(items: list[tuple[str, Scalar]]) -> StepFn:
         def emit(params: Params, view: ValueView) -> Mapping[str, Scalar]:
@@ -61,8 +60,7 @@ def oracle_fine_registry(
     real_sheets: set[str],
 ) -> dict[tuple[str, int], FineStepFn]:
     """Fine-step cached emitters for foreign sheets' split rows."""
-    with open(DAG_PATH, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(DAG_PATH)
     fine_rows: set[tuple[str, int]] = set()
     for s in STEPS:
         if len(s) == 3 and s[0] not in real_sheets:
@@ -71,7 +69,7 @@ def oracle_fine_registry(
     for n in dag["nodes"]:
         key = (n["sheet"], n["row"])
         if n["type"] in ("formula", "error") and key in fine_rows:
-            cells.setdefault(key, {})[n["id"]] = n["value"]
+            cells.setdefault(key, {})[n["id"]] = cast(Scalar, n["value"])
 
     def make_emitter(items: dict[str, Scalar]) -> FineStepFn:
         def emit(params: Params, view: ValueView, col: str) -> Mapping[str, Scalar]:

@@ -20,7 +20,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
 
-import yaml
+from xlsx_core.yamlutil import load_dag_doc
 
 REPO = Path(__file__).resolve().parents[3]
 DAG = REPO / "dag" / "solar.dag.yaml"
@@ -129,8 +129,7 @@ def _tarjan(
 
 def main() -> None:
     sys.setrecursionlimit(100000)
-    with open(DAG, encoding="utf-8") as f:
-        dag = yaml.safe_load(f)
+    dag = load_dag_doc(DAG)
     nodes = dag["nodes"]
     sheets = {n["sheet"] for n in nodes}
     calc = [n for n in nodes if n["type"] in ("formula", "error")]
