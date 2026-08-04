@@ -223,3 +223,20 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
 - Learning: platform-specific deps MUST carry markers at declaration — a
   universal lockfile records what you declared, it doesn't filter it per
   platform. One marker line fixes every OS; no per-platform lockfiles needed.
+
+## 2026-08-04 · dag-test-purity
+- Hypothesis: the test-suite churn in dag/solar.dag.yaml has two roots — a
+  write side effect inside extract_dag() and a per-process salted hash in the
+  year-series keys.
+- Action: split extraction from writing — extract_dag() is now pure;
+  write_dag_yaml() is public and called only by the CLI extract command
+  (solar_cli/main.py). Replaced abs(hash(r1c1)) with zlib.crc32 in
+  _make_concept_hint (year_series.py) so keys are deterministic across
+  processes. Added regression test: extract_dag(Settings(dag_path=tmp)) must
+  create nothing. Regenerated the tracked dag once with the new hash.
+- Outcome: gates green (ty/ruff, 165 tests); dag diff = 308 key-suffix lines
+  only, no node/value changes; post-pytest git status shows zero test-induced
+  writes.
+- Learning: any function that both computes AND writes a tracked artifact
+  will be abused by tests — purity at the library edge, writing at the command
+  edge. And never put Python's salted hash() into persisted identifiers.

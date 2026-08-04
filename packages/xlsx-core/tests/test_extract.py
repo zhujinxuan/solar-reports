@@ -94,3 +94,12 @@ def test_dag_node_count() -> None:
     dag = extract_dag()
     # The workbook has 6560 non-blank cells
     assert dag.node_count == 6560
+
+
+def test_extract_does_not_write_dag(tmp_path) -> None:
+    """extract_dag is pure — it must never write the dag file as a side effect."""
+    from xlsx_core.settings import Settings
+
+    target = tmp_path / "dag" / "must_not_appear.yaml"
+    extract_dag(Settings(dag_path=target))
+    assert not target.exists()

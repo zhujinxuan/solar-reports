@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 import openpyxl
 import typer
-from xlsx_core.extract import extract_dag
+from xlsx_core.extract import extract_dag, write_dag_yaml
 from xlsx_core.model import ErrorValue, Scalar
 from xlsx_core.recalc.base import (
     RecalcEngine,
@@ -313,6 +313,7 @@ def extract(
     settings = _build_settings(base, workbook=workbook, dag=dag)
     t0 = time.perf_counter()
     dag_obj = extract_dag(settings)
+    write_dag_yaml(dag_obj, settings.dag_path)
     elapsed = time.perf_counter() - t0
     typer.echo(
         f"Extracted {len(dag_obj.nodes)} nodes to {settings.dag_path}"

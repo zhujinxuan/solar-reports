@@ -1,7 +1,7 @@
 """DAG extraction — builds WorkbookDag from the OpenpyxlLoader snapshot.
 
 One-pass extraction for the SOLAR workbook: parse every formula, detect year series,
-classify nodes, and write dag/solar.dag.yaml.
+classify nodes. Writing the YAML is a separate, explicit step (write_dag_yaml).
 
 Exposes `extract_dag(settings) -> WorkbookDag` for reuse by other packages.
 """
@@ -141,8 +141,6 @@ def extract_dag(settings: Settings | None = None) -> WorkbookDag:
         defined_names=defined_names,
     )
 
-    # Write dag.yaml
-    _write_dag_yaml(dag, settings.dag_path)
 
     if parse_errors:
         print(f"Warning: {len(parse_errors)} parse errors found:")
@@ -199,8 +197,8 @@ def _dag_to_yaml_dict(dag: WorkbookDag) -> dict:
     }
 
 
-def _write_dag_yaml(dag: WorkbookDag, path: Path) -> None:
-    """Write a WorkbookDag to a YAML file."""
+def write_dag_yaml(dag: WorkbookDag, path: Path) -> None:
+    """Write a WorkbookDag to a YAML file (explicit; extract_dag never writes)."""
     dag_dict = _dag_to_yaml_dict(dag)
 
     # Ensure parent directory exists

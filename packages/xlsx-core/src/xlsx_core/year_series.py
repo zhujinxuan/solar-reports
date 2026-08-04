@@ -10,6 +10,7 @@ The concept hint is a truncated R1C1 string — deterministic, used for readabil
 
 from __future__ import annotations
 
+import zlib
 from dataclasses import dataclass, field
 
 from xlsx_core.ast import Expr
@@ -134,5 +135,5 @@ def _make_concept_hint(r1c1_str: str) -> str:
         return cleaned
 
     # Truncate and hash
-    h = abs(hash(r1c1_str)) % 10000
+    h = zlib.crc32(r1c1_str.encode("utf-8")) % 10000
     return f"{cleaned[: _MAX_HINT_LENGTH - 6]}..{h:04d}"
