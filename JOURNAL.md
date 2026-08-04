@@ -142,3 +142,27 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
 - Action: traced it — invest:total_investment is a per-period series [build1=0, build2=0, oper1=56837, oper2=450] (the workbook allocates 100% of static investment to the oper1 period via completion ratios aa=0/ab=0/ac=1). The KPI rule "按列序取首个数值单元" read build1 = 0. The real total is the 合计 column C5 = 57287 = sum of the period series = scalars.total_investment_total. Added a sumNumericCells() transform to app.js and bound 总投资 with agg:"sum" (note 各期合计).
 - Outcome: 总投资 card now renders 57,287 万元; all 6 KPI cards correct (engine values unchanged — engine was always right). Verified in headless browser with cache disabled.
 - Learning: "first cell" extraction is wrong for period series whose leading period is a zero-allocation construction slot; headline totals over a period/year schedule must use the aggregate (sum), with the period item kept for the per-period breakdown. Generalizes: any KPI that is a Σ over a schedule needs an explicit agg transform, never positional first-cell.
+
+## 2026-08-04 · vps-deployment-kit
+- Hypothesis: solar-server can deploy to a yum-based Linux VPS with uv + systemd
+  and no containers, since every dependency ships manylinux wheels.
+- Action: audited deploy constraints — Python 3.13 absent from yum repos (uv must
+  manage the interpreter); Settings defaults are Windows-shaped (excel-com engine,
+  C:/ LibreOffice path). Added deploy/ (systemd unit, env.template, update.sh) +
+  .gitattributes LF pin. Then a scout verified the frontend-only footprint.
+- Outcome: gates green (ty/ruff, 162 tests). Scout evidence: the static UI calls
+  only GET /api/schema, POST /api/domains/compute {version:"v2"}, GET
+  /api/download/domains.xlsx?version=v2 (app.js:15-17,48,136,146-149,577,672) —
+  all zero-file-I/O (engine.py:8-9); ModelInputs() boots from defaults
+  (main.py:225-226, inputs.py:29-217), so a frontend-only VPS needs NO xlsx, NO
+  dag, NO recalc engine, empty env is valid. dag/workbook keys only matter for
+  direct v1/verify calls; v1 itself never opens the workbook anymore
+  (dag_loader.py:35-36). Fixed main.py docstring mislabeling the inputs TOML env
+  var as SOLAR_INPUTS_TOML (real key: XLSX_INPUTS_TOML per env_prefix).
+- Learning: deployment readiness = auditing Settings defaults against the target
+  OS plus tracing the frontend's actual endpoint set to file I/O — env keys
+  belong to endpoints, not to "the app". Latent hazard found: v2_benchmark is
+  undeclared in every pyproject; editable uv installs mask it, any wheel-based
+  install would ImportError on /compute/v2?flat=true and /verify path 1.2.
+  Also XLSX_DAG_V2_PATH is dead config (no reader; file moved to
+  packages/solar-v2/dag/).

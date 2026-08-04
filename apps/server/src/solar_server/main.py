@@ -257,7 +257,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings: xlsx-core Settings override. Uses defaults if None.
 
     The returned app has TOML inputs pre-loaded if Settings specifies
-    an ``inputs_toml`` path (env ``SOLAR_INPUTS_TOML``).
+    an ``inputs_toml`` path (env ``XLSX_INPUTS_TOML``).
     """
 
     app = FastAPI(title="solar-server", version="0.1.0")

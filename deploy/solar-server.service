@@ -1,0 +1,22 @@
+[Unit]
+Description=solar-server — solar economic-evaluation FastAPI backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=solar
+Group=solar
+WorkingDirectory=/opt/solar-server
+EnvironmentFile=-/opt/solar-server/env
+ExecStart=/opt/solar-server/.venv/bin/uvicorn solar_server.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+# Compute is CPU-bound (1-70s per request, served via FastAPI's threadpool) and
+# the lru_caches are per-process, so extra workers mostly duplicate memory.
+# Raise concurrency only if load demands it by appending: --workers 2
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
