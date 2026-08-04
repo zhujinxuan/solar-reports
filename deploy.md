@@ -55,14 +55,34 @@ SOLAR_URL_PREFIX=/solar-server
 sudo dnf copr enable @caddy/caddy
 sudo dnf install -y caddy
 sudo tee /etc/caddy/Caddyfile <<'EOF'
-http://<VPS_IP>:13005 {
-    reverse_proxy 127.0.0.1:14905
+https://<VPS_IP>:13005 {
+    tls internal
+
+    # solar-server owns its /solar-server prefix — pass paths as-is
+    handle /solar-server* {
+        reverse_proxy 127.0.0.1:14905
+    }
+
+    # add other services the same way, one block each:
+    # handle /other-service* {
+    #     reverse_proxy 127.0.0.1:OTHER_PORT
+    # }
+
+    handle {
+        abort
+    }
 }
 EOF
 sudo systemctl enable --now caddy
 ```
 
-Then open `http://<VPS_IP>:13005/solar-server/`.
+Then open `https://<VPS_IP>:13005/solar-server/` (one-time browser warning —
+see §4a to trust the cert permanently). One public port, many services,
+routed by first path segment. Use `handle`, **not** `handle_path`: the latter
+strips the prefix, but solar-server is mounted under it and needs the full
+path (services that assume root instead would want `handle_path`). The final
+catch-all `handle { abort }` closes every other path; each service stays
+bound to 127.0.0.1 on its own internal port.
 
 ### Aliyun access rules
 
