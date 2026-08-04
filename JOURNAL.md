@@ -185,3 +185,25 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
   absolute paths or the app is reached without the proxy. Relative URLs are
   only safe because StaticFiles redirects prefix-without-slash to
   prefix-with-slash.
+
+## 2026-08-04 · vps-ops-model
+- Hypothesis: the deployment kit should match the VPS's real ops model — an
+  unprivileged app account plus an admin-owned edge — instead of a scripted
+  root install.
+- Action: user corrected the design (checkout at /home/appuser/solar-price-servec,
+  uv preinstalled, Caddy managed by admin, explicit "no sudo scripts in this
+  project"). Deleted deploy/update.sh + deploy/solar-server.service (both
+  root-oriented); added deploy/run.sh — sources ./env, execs
+  `uv run uvicorn solar_server.main:app --host/--port` as the current user
+  (foreground or nohup). Rewrote deploy.md as a role table (appuser = code +
+  service via uv run; admin = Caddy/security-group/firewall, documented not
+  scripted) with an optional systemd USER unit appendix (one-time admin
+  lingering command labeled as such). AGENTS.md gained the hard rule: no
+  privilege escalation in repo tooling.
+- Outcome: repo ships zero sudo; app-side lifecycle is clone → uv sync →
+  run.sh → pkill; edge config stays admin prose. Gates unaffected (script/doc
+  changes only).
+- Learning: ask WHO runs what before writing deploy scripts — a "deployment
+  script" that silently assumes root violates the target's account model; the
+  unprivileged default (uv run launcher + user-level persistence) is also the
+  more portable one. **→ promoted to AGENTS.md (no privilege escalation)**

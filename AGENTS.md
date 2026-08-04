@@ -9,6 +9,9 @@ Turn Excel economic-evaluation workbooks into real software: extract → interpr
 - **Gates before yield**: `uv run ty check` and `uv run ruff check` clean; `uv run pytest` green.
 - **Typing discipline**: no `Any`, no naked `dict` / `dict[str, Any]`. Every helper's I/O is a **frozen** pydantic model or `@dataclass(frozen=True)`.
 - **No hardcoding**: paths, tolerances, workbook names, engine choice → `pydantic-settings` Settings, env/CLI overridable.
+- **No privilege escalation in repo tooling**: deploy scripts run as the app
+  user (`uv run`), never sudo; system-level config (Caddy, firewall, security
+  group) is documented in deploy.md, not scripted. (2026-08-04 · vps-ops-model)
 - **Year-series, not cell-by-cell**: columns that iterate years (detected via column-shifted identical formulas) MUST be aggregated as polars year-series with readable domain names. Results must still match the xlsx numerically.
 - **solar-v1 carries the extracted `dag/solar.dag.yaml`** (position/expression/type);
   solar-v2 is a standalone domain engine — no dag, no cell identity in the compute
