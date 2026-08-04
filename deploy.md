@@ -93,19 +93,27 @@ Caddy generates and auto-renews its own CA. The browser shows a one-time
 warning ("Advanced → Proceed"). To remove the warning on your own devices,
 install Caddy's local root CA once:
 
-```bash
-sudo cat /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
+```powershell
+# on your Windows machine:
+ssh user@<VPS_IP> "sudo cat /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt" > caddy-root.crt
 ```
 
-Copy that PEM into your OS/browser trusted-root store.
+Double-click `caddy-root.crt` → Install Certificate → **Local Machine** →
+"Place all certificates in the following store" → **Trusted Root
+Certification Authorities**. After that `https://<VPS_IP>:13005/solar-server/`
+shows a green lock (Caddy's internal cert carries the IP as SAN).
+Note: `tls internal` needs no port 80 at all — there is no ACME challenge.
 
 ### 4b. Add a domain later
 
 Point an A record at the VPS IP and change the site address to the domain —
-Caddy obtains Let's Encrypt certs automatically. **ICP caveat:** if the ECS is
-in a mainland-China region, a domain needs ICP filing (备案) before it can
-serve 80/443; HK/overseas regions don't. A bare IP on a non-standard port
-(like 13005) is not subject to that.
+Caddy obtains Let's Encrypt certs automatically. **Mainland-China reality:**
+this ECS region requires ICP filing (备案) before any domain can serve
+80/443 — a real-name-registered domain plus filing through the Aliyun ICP
+portal, typically 1–3 weeks; Aliyun intercepts unfiled sites on 80/443.
+A bare IP on a non-standard port (like 13005) is the practical route until
+you choose to file, and this setup needs no change when you do: add the
+domain site block, swap `tls internal` for automatic LE.
 
 ### 4c. Paid IP certificate
 
