@@ -27,3 +27,67 @@ recalc_engine = "excel-com"
 
 # LibreOffice 可执行文件路径（仅 recalc_engine = "libreoffice" 时需要）
 libreoffice_path = "C:/Program Files/LibreOffice/program/soffice.exe"
+
+# ── v2 engine inputs (optional) ────────────────────────────
+# 所有字段均为可选，未指定则使用工作簿默认值。
+# 可单独设置 [inputs] 表，或与上方 Settings 键混合（[inputs] 优先级更高）。
+#
+# [inputs]
+# installed_capacity_mw = 15.0
+# construction_year = 2020
+# operating_years = 25
+# construction_months = 6
+# first_year_full_hours = 1145.0
+# guaranteed_hours = 1100.0
+# base_tariff = 0.401
+# market_tariff = 0.39
+# subsidy_per_kwh = 0.0
+# construction_cost = 10046.37
+# equipment_cost = 40042.42
+# survey_design_fee = 600.0
+# contingency = 631.8
+# other_cost_base = 2281.33
+# farmland_occupation_tax = 3000.0
+# land_use_fee = 180.0
+# vat_rate_construction = 0.09
+# vat_rate_equipment = 0.13
+# vat_rate_survey = 0.06
+# equity_ratio = 0.2
+# loan_rate_long = 0.0465
+# loan_years = 15
+# working_capital_loan_rate = 0.0435
+# short_term_loan_rate = 0.0435
+# vat_rate = 0.13
+# vat_exempt_year = 2020
+# city_maintenance_tax_rate = 0.05
+# education_surcharge_rate = 0.05
+# income_tax_rate = 0.25
+# western_dev_preferential = "否"
+# western_dev_tax_rate = 0.15
+# land_use_tax_rate = 0.0
+# land_taxed_area = 0.0
+# surplus_reserve_ratio = 0.1
+# depreciation_years = 20
+# salvage_rate = 0.05
+# staff_count = 8
+# avg_salary = 9.0
+# welfare_rate = 0.5
+# other_cost_rate = 25.0
+# material_cost_rate = 10.0
+# insurance_rate = 0.0005
+# land_per_mw = 11.623
+# land_rent_per_mu = 600.0
+# rent_escalation_freq = 3
+# rent_escalation_rate = 0.05
+# rent_payment_freq = 2
+# dividend_ratio = 0.8
+# buyer_benchmark_rate = 0.085
+# equity_sale_tax_rate = 0.15
+# epc_cost_price = 3200.0
+# mgmt_allocation_ratio = 0.0
+# project_income = 300.0
+# provisional_sum = 3000.0
+# aux_static_ratio_build1 = 0.0
+# aux_static_ratio_build2 = 0.0
+# aux_static_ratio_operate = 1.0
+# initial_cum_profit = -0.001

@@ -73,7 +73,14 @@ class ComputeRequest(BaseModel):
         default=None,
         description="If provided, return only these node ids.",
     )
-
+    flat: bool = Field(
+        default=False,
+        description="If true and v2, return flat {node_id: value} via projection.",
+    )
+    inputs: dict[str, object] | None = Field(
+        default=None,
+        description="ModelInputs field overrides (JSON object, v2 only).",
+    )
 
 class ComputeResponse(BaseModel):
     """POST /compute/{version} response."""
@@ -82,8 +89,22 @@ class ComputeResponse(BaseModel):
 
     version: str
     node_count: int
-    values: dict[str, ScalarJSON]
+    values: dict[str, object]  # domain JSON for v2, ScalarJSON for v1
 
+
+class ComputeV2Request(BaseModel):
+    """POST /compute/v2 optional body — ModelInputs overrides + flat flag."""
+
+    model_config = ConfigDict(frozen=True)
+
+    inputs: dict[str, object] | None = Field(
+        default=None,
+        description="ModelInputs field overrides (JSON object).",
+    )
+    flat: bool = Field(
+        default=False,
+        description="If true, return flat {node_id: value} via projection.",
+    )
 
 # ---------------------------------------------------------------------------
 # Verify
@@ -203,7 +224,7 @@ class CellValue(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    node: str
+    node: str = ""
     col: str
     row: int
     value: ScalarJSON
@@ -240,6 +261,10 @@ class DomainsComputeRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     version: str = "v2"
+    inputs: dict[str, object] | None = Field(
+        default=None,
+        description="ModelInputs field overrides (JSON object, v2 only).",
+    )
 
 
 class DomainsComputeResponse(BaseModel):

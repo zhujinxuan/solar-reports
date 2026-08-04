@@ -24,3 +24,4 @@ class Settings(BaseSettings):
     # formulas-pkg (cannot evaluate this workbook). Env XLSX_RECALC_ENGINE overrides.
     recalc_engine: str = "excel-com"
     libreoffice_path: Path = Path("C:/Program Files/LibreOffice/program/soffice.exe")
+    inputs_toml: str | None = None

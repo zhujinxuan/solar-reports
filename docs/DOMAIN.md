@@ -90,19 +90,22 @@ nodes:
   error literal (`#REF!` etc.) or the cached value is an Excel error — never coerce.
 - Node `value` is the workbook cached value (openpyxl `data_only=True`) — G1's oracle.
 
-### NodeValues contract (v1 and v2 both expose it)
+### NodeValues contract (v1 and the v2 benchmark harness)
 
 `NodeValues` = frozen pydantic model wrapping an immutable mapping `values: dict[node_id, Scalar]`
 where `Scalar = int | float | str | bool | None | ErrorValue`. `ErrorValue` carries the
-error string (e.g. `#REF!`). Both versions expose `compute/interpret(...) -> NodeValues`.
+error string (e.g. `#REF!`). solar-v1 exposes `compute(...) -> NodeValues` over all dag
+nodes; solar-v2's test-side `v2_benchmark.projection` produces the same mapping from
+the engine's typed `ModelResults`.
 
-### v2 code_ref contract (G2)
+### v2 engine contract (v2-rebuild, 2026-07-26)
 
-`dag/solar.v2.annotated.yaml` extends the v1 dag nodes with `description` (domain
-meaning) and `code_ref` (e.g. `solar_v2.pnl:annual_revenue`). v2's `compute()` MUST
-return a value for every node id its annotated dag claims, keyed by the SAME node id
-as v1, so G2 = set-join on node id + value compare (numbers rel tol 1e-6; errors must
-match error-for-error).
+solar-v2 is a standalone domain engine: `solar_v2.engine.compute_model(ModelInputs) ->
+ModelResults` — per-domain polars frames + typed scalars, zero I/O, no dag/xlsx-core
+imports, no cell identity. Cell identity lives ONLY in the test-side
+`v2_benchmark` (layout/projection/compare). G2 = project(ModelResults) vs solar-v1's
+NodeValues, set-join on node id + value compare (numbers rel tol 1e-6; errors
+error-for-error). See packages/solar-v2/DOMAIN.md for the full architecture.
 
 ### RecalcEngine port (path 1.1)
 

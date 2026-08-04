@@ -10,7 +10,9 @@ Turn Excel economic-evaluation workbooks into real software: extract → interpr
 - **Typing discipline**: no `Any`, no naked `dict` / `dict[str, Any]`. Every helper's I/O is a **frozen** pydantic model or `@dataclass(frozen=True)`.
 - **No hardcoding**: paths, tolerances, workbook names, engine choice → `pydantic-settings` Settings, env/CLI overridable.
 - **Year-series, not cell-by-cell**: columns that iterate years (detected via column-shifted identical formulas) MUST be aggregated as polars year-series with readable domain names. Results must still match the xlsx numerically.
-- **Every version package carries its own `dag.yaml`** (position/expression/type + `description` + `code_ref`).
+- **solar-v1 carries the extracted `dag/solar.dag.yaml`** (position/expression/type);
+  solar-v2 is a standalone domain engine — no dag, no cell identity in the compute
+  path; cell identity lives only in its test-side `v2_benchmark` harness.
 - **Every package carries its own `DOMAIN.md`** — bounded contexts it owns/realizes and its DI wiring. Read it before coding in that package; evolve it when the package changes. The shared canonical design lives in `docs/DOMAIN.md`.
 - **JOURNAL.md is append-only and mandatory** — every non-trivial attempt (success OR failure: engine benchmarks, evaluator designs, simplification tries) gets an entry BEFORE moving on. Format:
 
@@ -32,7 +34,9 @@ Turn Excel economic-evaluation workbooks into real software: extract → interpr
 packages/xlsx-core    shared kernel: DAG model, formula AST/parser, evaluator,
                       workbook loader (openpyxl), year-series detector. No domain.
 packages/solar-v1     v1 software = dag.yaml interpreter (ACL-bound translation)
-packages/solar-v2     v2 software = distilled DDD domain code (polars year-series)
+packages/solar-v2     v2 software = standalone distilled domain engine
+                      (ModelInputs -> compute_model -> ModelResults; polars
+                      year-series; v2_benchmark = test-side cell projection)
 apps/cli              typer CLI, works against any version package
 apps/server           FastAPI backend (frontend deferred)
 dag/                  extracted + annotated dag.yaml artifacts

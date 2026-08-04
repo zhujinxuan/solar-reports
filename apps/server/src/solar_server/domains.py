@@ -84,15 +84,15 @@ def _ensure_dag_index(request: Request, settings: Settings) -> list[_NodeInfo]:
 # ---------------------------------------------------------------------------
 
 _DOMAIN_MODULES: tuple[str, ...] = (
-    "param_steps",
-    "invest",
-    "debt",
-    "cost",
-    "pnl",
-    "cashflow",
-    "finplan",
-    "balance",
-    "valuation",
+    "solar_v2.domains.params",
+    "solar_v2.domains.invest",
+    "solar_v2.domains.debt",
+    "solar_v2.domains.cost",
+    "solar_v2.domains.pnl",
+    "solar_v2.domains.cashflow",
+    "solar_v2.domains.finplan",
+    "solar_v2.domains.balance",
+    "solar_v2.domains.valuation",
 )
 
 
@@ -105,13 +105,13 @@ def _load_all_domains() -> list[DomainSchema]:
     raw: list[DomainSchema] = []
     for mod_name in _DOMAIN_MODULES:
         try:
-            mod = __import__(f"solar_v2.{mod_name}", fromlist=["SCHEMA"])
+            mod = __import__(mod_name, fromlist=["SCHEMA"])
             schema = getattr(mod, "SCHEMA", None)
             if isinstance(schema, DomainSchema):
                 raw.append(schema)
         except Exception:
             logger.debug(
-                "Failed to load schema from solar_v2.%s", mod_name, exc_info=True
+                "Failed to load schema from %s", mod_name, exc_info=True
             )
     return raw
 

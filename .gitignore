@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Scratch / tool artifacts
+.pytest_cache/
+.ruff_cache/
+g4.log
+ty_err.txt

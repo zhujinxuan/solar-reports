@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import tempfile
 from pathlib import Path
+from typing import cast
 
 import openpyxl
 from xlsx_core.model import ErrorValue, Scalar
@@ -170,38 +171,40 @@ def _run_path_1_1(
 
 
 def _run_path_1_2(settings: Settings) -> Path12Result:
-    """Path 1.2: compare solar-v2 compute() vs solar-v1 compute() node-by-node."""
+    """Path 1.2: compare solar-v2 engine vs solar-v1 compute().
+
+    Runs compute_model() → v2_benchmark.projection.project() →
+    compare vs solar_v1 values.
+    """
     from solar_v1.api import compute as v1_compute
-    from solar_v2.api import compute as v2_compute
+    from solar_v2.engine import compute_model
+    from v2_benchmark.compare import diff as diff_v2
+    from v2_benchmark.projection import project as project_v2
 
     v1_values = v1_compute(settings)
-    v2_values = v2_compute(settings)
+    v1_dict = dict(v1_values.values)
 
-    # Inner-join on v2's claimed node ids
+    results = compute_model()
+    dag_path = str(settings.dag_path)
+    projected = project_v2(results, dag_path=dag_path)
+
+    # Use compare.diff
+    diffs = diff_v2(projected, v1_dict, rel_tol=settings.rel_tol)
+
     mismatches: list[MismatchJSON] = []
-    total: int = 0
-
-    for nid, v2_val in v2_values.values.items():
-        v1_val = v1_values.values.get(nid)
-        total += 1
-        if not compare_values(
-            v1_val, v2_val,
-            rel_tol=settings.rel_tol, abs_tol=settings.abs_tol,
-        ):
-            mismatches.append(
-                MismatchJSON(
-                    node_id=nid,
-                    expected=scalar_to_json(v1_val),
-                    got=scalar_to_json(v2_val),
-                )
+    for d in diffs[: _SAMPLE_CAP]:
+        mismatches.append(
+            MismatchJSON(
+                node_id=d.node_id,
+                expected=scalar_to_json(cast(Scalar, d.benchmark)),
+                got=scalar_to_json(cast(Scalar, d.projected)),
             )
-            if len(mismatches) >= _SAMPLE_CAP:
-                break
+        )
 
     return Path12Result(
-        ok=len(mismatches) == 0 and total > 0,
-        mismatch_count=len(mismatches),
-        total=total,
+        ok=len(diffs) == 0 and len(projected) > 0,
+        mismatch_count=len(diffs),
+        total=len(projected),
         sample_mismatches=tuple(mismatches),
     )
 

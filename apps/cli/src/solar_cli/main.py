@@ -18,7 +18,11 @@ import tempfile
 import time
 import tomllib
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, cast
+
+if TYPE_CHECKING:
+    from solar_v2.inputs import ModelInputs
+
 
 import openpyxl
 import typer
@@ -57,6 +61,7 @@ _VALID_TOML_KEYS: frozenset[str] = frozenset({
     "abs_tol",
     "recalc_engine",
     "libreoffice_path",
+    "inputs_toml",
 })
 
 # TOML keys whose string values are resolved as Paths relative to the
@@ -66,6 +71,7 @@ _PATH_KEYS: frozenset[str] = frozenset({
     "dag_path",
     "dag_v2_path",
     "libreoffice_path",
+    "inputs_toml",
 })
 
 # Context object key for the base Settings (post-TOML, pre-CLI-overrides).
@@ -130,7 +136,9 @@ def _load_toml_config(config_path: Path) -> dict[str, object]:
         typer.echo(f"Invalid TOML in {config_path}: {exc}", err=True)
         raise typer.Exit(code=2) from exc
 
-    unknown = set(data.keys()) - _VALID_TOML_KEYS
+    # Allow "inputs" as a non-Settings key (handled by ModelInputs.from_toml)
+    settings_keys = set(data.keys()) - {"inputs"}
+    unknown = settings_keys - _VALID_TOML_KEYS
     if unknown:
         typer.echo(
             f"Unknown config key(s): {', '.join(sorted(unknown))}. "
@@ -142,6 +150,8 @@ def _load_toml_config(config_path: Path) -> dict[str, object]:
     config_dir = config_path.parent.resolve()
     result: dict[str, object] = {}
     for key, value in data.items():
+        if key == "inputs":
+            continue  # handled by _load_model_inputs_from_toml
         if key in _PATH_KEYS and isinstance(value, str):
             result[key] = (config_dir / value).resolve()
         else:
@@ -178,6 +188,7 @@ def main(
         base_kwargs = Settings().model_dump()
         base_kwargs.update(toml_overrides)
         ctx.obj[_CTX_SETTINGS_KEY] = Settings(**base_kwargs)
+        ctx.obj["_config_path"] = config
     else:
         ctx.obj[_CTX_SETTINGS_KEY] = Settings()
 
@@ -340,11 +351,19 @@ def compute(
             help="Output file path (.json or .csv); stdout summary if omitted",
         ),
     ] = None,
+    flat: Annotated[
+        bool,
+        typer.Option(
+            "--flat",
+            help="Output flat {node_id: value} via v2_benchmark projection (v2 only)",
+        ),
+    ] = False,
 ) -> None:
     """Compute node values via solar-v1 or solar-v2.
 
-    Writes results as JSON ({node_id: value}) or CSV (node_id,value) if --out
-    is given.  Prints a count + elapsed summary otherwise.
+    v1: interpret the DAG (flat node_id→value map).
+    v2: run the domain engine (domain-structured JSON by default; --flat for
+    node_id→value via v2_benchmark.projection).
     """
     if version not in ("v1", "v2"):
         typer.echo(f"Invalid --version: {version!r}. Use v1 or v2.", err=True)
@@ -358,54 +377,70 @@ def compute(
         from solar_v1.api import compute as compute_v1
 
         node_values = compute_v1(settings)
-    else:
-        try:
-            import importlib
+        elapsed = time.perf_counter() - t0
+        count = len(node_values.values)
 
-            compute_v2 = importlib.import_module(
-                "solar_v2.api"
-            ).compute
-        except (ImportError, ModuleNotFoundError) as exc:
+        if out is not None:
+            _write_node_values(node_values, out)
             typer.echo(
-                f"solar-v2 not available ({exc})"
-                " — solar-v2 may be mid-rewrite. Use --version v1.",
+                f"Wrote {count} node values to {out} ({elapsed:.2f}s)"
+            )
+        else:
+            typer.echo(
+                f"Computed {count} node values via solar-v1 ({elapsed:.2f}s)"
+            )
+    else:
+        # --- v2: domain engine ---
+        try:
+            from solar_v2.engine import compute_model
+            from solar_v2.inputs import ModelInputs
+        except ImportError as exc:
+            typer.echo(
+                f"solar-v2 not available ({exc}) — mid-rewrite. Use v1.",
                 err=True,
             )
             raise typer.Exit(code=1) from exc
 
-        node_values = compute_v2(settings)
-
-    elapsed = time.perf_counter() - t0
-    count = len(node_values.values)
-
-    if out is not None:
-        out_str = str(out)
-        plain: dict[str, object] = {}
-        for k, v in node_values.values.items():
-            if isinstance(v, ErrorValue):
-                plain[k] = v.error
-            else:
-                plain[k] = v
-
-        if out_str.endswith(".csv"):
-            out.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_str, "w", encoding="utf-8", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["node_id", "value"])
-                for k, v in plain.items():
-                    writer.writerow([k, v])
+        # Load ModelInputs from TOML config if --config was given
+        config_path: Path | None = ctx.obj.get("_config_path")
+        if config_path is not None:
+            inputs = _load_model_inputs_from_toml(config_path)
         else:
-            out.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_str, "w", encoding="utf-8") as f:
-                json.dump(plain, f, ensure_ascii=False, indent=2)
+            inputs = ModelInputs()
 
-        typer.echo(
-            f"Wrote {count} node values to {out} ({elapsed:.2f}s)"
-        )
-    else:
-        typer.echo(
-            f"Computed {count} node values via solar-{version} ({elapsed:.2f}s)"
-        )
+        results = compute_model(inputs)
+        elapsed = time.perf_counter() - t0
+
+        if flat:
+            from v2_benchmark.projection import project as project_v2
+
+            dag_path = str(settings.dag_path)
+            flat_values = project_v2(results, dag_path=dag_path)
+            if out is not None:
+                _write_flat_values(flat_values, out)
+                typer.echo(
+                    f"Wrote {len(flat_values)} node values to {out} ({elapsed:.2f}s)"
+                )
+            else:
+                typer.echo(json.dumps(flat_values, ensure_ascii=False, indent=2))
+                typer.echo(
+                    f"\nComputed {len(flat_values)} node values via solar-v2 "
+                    f"engine ({elapsed:.2f}s)"
+                )
+        else:
+            domain_json = _model_results_to_json(results)
+            if out is not None:
+                out.parent.mkdir(parents=True, exist_ok=True)
+                with open(str(out), "w", encoding="utf-8") as f:
+                    json.dump(domain_json, f, ensure_ascii=False, indent=2)
+                typer.echo(
+                    f"Wrote domain results to {out} ({elapsed:.2f}s)"
+                )
+            else:
+                typer.echo(json.dumps(domain_json, ensure_ascii=False, indent=2))
+                typer.echo(
+                    f"\nComputed 9-domain model via solar-v2 engine ({elapsed:.2f}s)"
+                )
 
 
 @app.command()
@@ -564,60 +599,53 @@ def verify(
                     " nodes match after recalc"
                 )
 
-    # --- Path 1.2: v2 vs v1 ---
+    # --- Path 1.2: v2 engine vs v1 ---
     if not skip_v2:
         try:
-            import importlib
-
-            compute_v2 = importlib.import_module(
-                "solar_v2.api"
-            ).compute
-        except (ImportError, ModuleNotFoundError) as exc:
+            from solar_v2.engine import compute_model
+            from solar_v2.inputs import ModelInputs
+            from v2_benchmark.compare import diff as diff_v2
+            from v2_benchmark.compare import format_report
+            from v2_benchmark.projection import project as project_v2
+        except ImportError as exc:
             typer.echo(
                 f"\nPath 1.2 SKIPPED: solar-v2 not available ({exc})"
                 " — solar-v2 may be mid-rewrite.",
             )
         else:
-            typer.echo("\n--- Path 1.2: v2 vs v1 ---")
+            typer.echo("\n--- Path 1.2: v2 engine vs v1 ---")
             t0 = time.perf_counter()
-            v2_values = compute_v2(settings)
+
+            # Load ModelInputs from TOML config if --config was given
+            config_path: Path | None = ctx.obj.get("_config_path")
+            if config_path is not None:
+                inputs = _load_model_inputs_from_toml(config_path)
+            else:
+                inputs = ModelInputs()
+
+            results = compute_model(inputs)
+            dag_path = str(settings.dag_path)
+            projected = project_v2(results, dag_path=dag_path)
             typer.echo(
-                f"solar-v2: {len(v2_values.values)} values"
+                f"solar-v2 engine: {len(projected)} projected nodes"
                 f" ({time.perf_counter() - t0:.2f}s)"
             )
 
-            v2_mismatches: list[tuple[str, Scalar, Scalar]] = []
-            compared = 0
-            for nid in sorted(v2_values.values.keys()):
-                v1_val = v1_values.values.get(nid)
-                v2_val = v2_values.values.get(nid)
-                if v1_val is None:
-                    continue
-                compared += 1
-                if not _scalars_match(v1_val, v2_val, rel, abs_t):
-                    v2_mismatches.append((nid, v1_val, v2_val))
-
-            missing_from_v2 = formula_error_ids - set(
-                v2_values.values.keys()
-            )
-            if missing_from_v2:
-                typer.echo(
-                    f"WARNING: v2 missing {len(missing_from_v2)}"
-                    f" formula/error nodes: {sorted(missing_from_v2)[:10]}..."
-                )
+            # Compare vs v1: use compare.diff
+            v1_dict = dict(v1_values.values)
+            diffs = diff_v2(projected, v1_dict, rel_tol=rel)
 
             typer.echo(
-                f"Path 1.2: compared {compared} inner-join nodes"
+                f"Path 1.2: {len(projected)} projected nodes, "
+                f"{len(diffs)} differences"
             )
 
-            if v2_mismatches:
-                _print_mismatches(
-                    v2_mismatches, "Path 1.2: v2 vs v1",
-                )
+            if diffs:
+                typer.echo(format_report(diffs))
                 exit_code = 1
             else:
                 typer.echo(
-                    "Path 1.2 CLEAN: all inner-join nodes match"
+                    "Path 1.2 CLEAN: all projected nodes match v1"
                 )
 
     if not skip_engine and not skip_v2:
@@ -631,5 +659,212 @@ def verify(
     raise typer.Exit(code=exit_code)
 
 
-if __name__ == "__main__":
-    app()
+# ---------------------------------------------------------------------------
+# v2 engine helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_model_inputs_from_toml(config_path: Path) -> ModelInputs:
+    """Extract ModelInputs from a TOML config that may mix Settings keys.
+
+    Uses ``ModelInputs.from_toml``, but handles the case where the TOML
+    file has both top-level Settings keys and an ``[inputs]`` table by
+    extracting only the ``[inputs]`` section.
+    """
+    from solar_v2.inputs import ModelInputs
+
+    raw = tomllib.loads(config_path.read_text(encoding="utf-8"))
+
+    # If file has both [inputs] and other top-level keys, extract [inputs]
+    if "inputs" in raw:
+        inputs_raw = raw["inputs"]
+    else:
+        # Filter to only ModelInputs field names (ignore Settings keys)
+        valid = set(ModelInputs.model_fields.keys())
+        inputs_raw = {k: v for k, v in raw.items() if k in valid}
+
+    if not inputs_raw:
+        return ModelInputs()
+
+    # Coerce types matching ModelInputs.from_toml
+    return _coerce_and_build_inputs(inputs_raw, ModelInputs)
+
+
+def _coerce_and_build_inputs(
+    inputs_raw: dict[str, object],
+    cls: type[ModelInputs],
+) -> ModelInputs:
+    """Coerce TOML values to ModelInputs field types and construct."""
+    from solar_v2.inputs import ModelInputs
+    coerced: dict[str, float | int | bool | tuple[float, ...] | str] = {}
+    for key, val in inputs_raw.items():
+        if key == "western_dev_preferential" and isinstance(val, str):
+            # "是" → True, "否" → False
+            s = val.strip()
+            if s == "是":
+                coerced[key] = True
+            elif s == "否":
+                coerced[key] = False
+            else:
+                raise ValueError(
+                    f"western_dev_preferential must be '是' or '否', got {val!r}"
+                )
+        elif key in ModelInputs._FLOAT_FIELDS and isinstance(val, int):
+            coerced[key] = float(val)
+        elif key in (
+            "degradation_factor",
+            "load_rate",
+            "repair_rate_series",
+        ) and isinstance(val, list):
+            coerced[key] = tuple(float(v) for v in cast(list[float | int], val))
+        else:
+            coerced[key] = cast(float | int | bool | str, val)
+
+    return cls.model_validate(coerced)
+
+
+def _model_results_to_json(results: object) -> dict[str, object]:
+    """Serialize ModelResults to domain-structured JSON dict.
+
+    Returns a dict with ``version``, one key per domain (params, invest,
+    debt, cost, pnl, cashflow, finplan, balance, valuation), and
+    ``headline`` scalars.  Each domain has ``key``, ``sheet``, ``label``,
+    ``years``, and ``items`` (each with ``key``, ``label``, ``unit``,
+    ``formula``, ``kind``, and ``value`` or ``values``).
+    """
+    from solar_v2.schema import all_domains
+
+    schemas = all_domains()
+    domains: dict[str, object] = {}
+
+    for ds in schemas:
+        domain_result = getattr(results, ds.key)
+        years = _get_domain_years(domain_result)
+        items: list[dict[str, object]] = []
+
+        for item_schema in ds.items:
+            entry: dict[str, object] = {
+                "key": item_schema.key,
+                "label": item_schema.label,
+                "unit": item_schema.unit,
+                "formula": item_schema.formula,
+                "kind": item_schema.kind,
+            }
+            if item_schema.kind == "scalar":
+                scalars = getattr(domain_result, "scalars", None)
+                value = _read_scalar_value(scalars, domain_result, item_schema.key)
+                entry["value"] = value
+            else:
+                frame = getattr(domain_result, "frame", None)
+                if frame is not None and item_schema.key in frame.columns:
+                    series = frame[item_schema.key]
+                    vals: list[object] = []
+                    for v in series.to_list():
+                        if isinstance(v, float) and (
+                            v != v or v == float("inf") or v == float("-inf")
+                        ):
+                            vals.append(None)
+                        else:
+                            vals.append(v)
+                    entry["values"] = vals
+                else:
+                    entry["values"] = None
+            items.append(entry)
+
+        domains[ds.key] = {
+            "key": ds.key,
+            "sheet": ds.sheet,
+            "label": ds.label,
+            "years": years,
+            "items": items,
+        }
+
+    return {
+        "version": "v2",
+        **domains,
+        "headline": {
+            "equity_irr": getattr(results, "equity_irr", None),
+            "project_irr_after_tax": getattr(results, "project_irr_after_tax", None),
+            "equity_npv": getattr(results, "equity_npv", None),
+            "project_npv_after_tax": getattr(results, "project_npv_after_tax", None),
+            "equity_sale_price": getattr(results, "equity_sale_price", None),
+        },
+    }
+
+def _read_scalar_value(
+    scalars: object | None,
+    domain_result: object,
+    key: str,
+) -> object:
+    """Read a scalar value with suffix fallback for key mismatches."""
+    if scalars is not None:
+        if hasattr(scalars, key):
+            return getattr(scalars, key)
+        for suffix in ("_after_tax", "_pre_tax", "_total", "_pct"):
+            alt = key + suffix
+            if hasattr(scalars, alt):
+                return getattr(scalars, alt)
+    if hasattr(domain_result, key):
+        return getattr(domain_result, key)
+    return None
+
+
+def _get_domain_years(domain_result: object) -> list[int]:
+    """Extract calendar years from a domain result."""
+    years = getattr(domain_result, "years", None)
+    if years is not None:
+        return list(years)
+    periods = getattr(domain_result, "periods", None)
+    if periods is not None:
+        return list(periods)
+    for attr in ("income", "frame"):
+        frame = getattr(domain_result, attr, None)
+        if frame is not None and "year" in frame.columns:
+            return [int(y) for y in frame["year"].to_list()]
+    return []
+
+
+def _write_node_values(node_values: object, out: Path) -> None:
+    """Write NodeValues to a JSON or CSV file."""
+    from xlsx_core.model import ErrorValue
+
+    plain: dict[str, object] = {}
+    vals: object = getattr(node_values, "values", None)
+    if vals is None or not isinstance(vals, dict):
+        raise TypeError("Expected NodeValues with .values dict")
+    vals_dict: dict[str, object] = cast(dict[str, object], vals)
+    for k, v in vals_dict.items():
+        if isinstance(v, ErrorValue):
+            plain[k] = v.error
+        else:
+            plain[k] = v
+    out_str = str(out)
+    if out_str.endswith(".csv"):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_str, "w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["node_id", "value"])
+            for k, v in plain.items():
+                writer.writerow([k, v])
+    else:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_str, "w", encoding="utf-8") as f:
+            json.dump(plain, f, ensure_ascii=False, indent=2)
+
+
+def _write_flat_values(values: dict[str, float | str], out: Path) -> None:
+    """Write flat {node_id: value} dict to a JSON or CSV file."""
+    out_str = str(out)
+    if out_str.endswith(".csv"):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_str, "w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["node_id", "value"])
+            for k, v in values.items():
+                writer.writerow([k, v])
+    else:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_str, "w", encoding="utf-8") as f:
+            json.dump(values, f, ensure_ascii=False, indent=2)
+
+

@@ -36,7 +36,7 @@ src = ["packages", "apps"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ANN", "TID"]
-ignore = ["ANN401", "RUF001", "RUF003"]  # RUF001/RUF003: CJK chars in filenames/comments
+ignore = ["ANN401", "RUF001", "RUF002", "RUF003"]  # RUF001-003: CJK ambiguous chars
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["ANN"]
@@ -48,6 +48,8 @@ ignore = ["ANN401", "RUF001", "RUF003"]  # RUF001/RUF003: CJK chars in filenames
 "**/solar_v2/finplan.py" = ["E501"]
 "**/solar_v2/balance.py" = ["E501"]
 "**/solar_v2/valuation.py" = ["E501"]
+"**/solar_v2/inputs.py" = ["E501"]
+"**/solar_v2/domains/params.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "apps"]

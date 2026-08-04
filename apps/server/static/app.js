@@ -235,7 +235,7 @@ function initComputeTab() {
      "fraction"   —— 小数为比例（0.0956），显示为 9.56%（实测 cashflow:equity_irr H61=0.0956）；
      "percent100" —— 工作簿已是 ×100 写法（6.129），直接加 %（实测 cashflow:project_irr I29=6.129）。 */
 const KPI_BINDINGS = [
-  { title: "总投资",           domain: "invest",    itemKey: "total_investment", unitHint: "number" },
+  { title: "总投资",           domain: "invest",    itemKey: "total_investment", unitHint: "number", agg: "sum", note: "各期合计" },
   { title: "年发电量",         domain: "pnl",       itemKey: "power_generation", unitHint: "number", note: "首年" },
   { title: "销售收入",         domain: "pnl",       itemKey: "sales_revenue",    unitHint: "number", note: "首年" },
   { title: "净利润",           domain: "pnl",       itemKey: "net_profit",       unitHint: "number", note: "首年" },
@@ -252,12 +252,27 @@ function firstNumericCell(item) {
   return null;
 }
 
+/* 期序列/年序列合计：总投资等头部指标取各期之和（C 列合计语义），
+   而非首个单元（首期为建设期，常为 0）。 */
+function sumNumericCells(item) {
+  if (!item || !Array.isArray(item.cells)) return null;
+  let total = 0;
+  let seen = false;
+  for (const c of item.cells) {
+    if (typeof c.value === "number" && Number.isFinite(c.value)) {
+      total += c.value;
+      seen = true;
+    }
+  }
+  return seen ? total : null;
+}
+
 function bindKPIItem(data, binding) {
   const domain = data.domains.find((d) => d.key === binding.domain);
   if (!domain) return null;
   const item = (domain.items || []).find((it) => it.key === binding.itemKey);
   if (!item) return null;
-  const value = firstNumericCell(item);
+  const value = binding.agg === "sum" ? sumNumericCells(item) : firstNumericCell(item);
   return value == null ? null : { item, value };
 }
 
