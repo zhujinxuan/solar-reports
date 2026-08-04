@@ -13,9 +13,8 @@
 # Optional, for /verify engine path 1.1:
 #   sudo dnf install -y libreoffice-calc
 #
-# Public access: reverse-proxy 127.0.0.1:8000 with Caddy (dnf copr enable
-# @caddy/caddy && dnf install caddy) or nginx (EPEL; then also
-# sudo setsebool -P httpd_can_network_connect 1 for SELinux).
+# Public access: Caddy reverse-proxy (config in deploy.md) or expose uvicorn
+# directly via SOLAR_HOST=0.0.0.0 in /opt/solar-server/env.
 
 set -euo pipefail
 
@@ -56,14 +55,18 @@ systemctl daemon-reload
 systemctl enable solar-server
 systemctl restart solar-server
 
-# 7. Smoke test.
+# 7. Smoke test (reads SOLAR_PORT / SOLAR_URL_PREFIX from the env file).
+PORT="$(sed -n 's/^SOLAR_PORT=//p' "$APP_DIR/env" 2>/dev/null | head -n1)"
+PORT="${PORT:-14905}"
+PREFIX="$(sed -n 's/^SOLAR_URL_PREFIX=//p' "$APP_DIR/env" 2>/dev/null | head -n1)"
 for _ in $(seq 1 15); do
-    if curl -fsS http://127.0.0.1:8000/health; then
+    if curl -fsS "http://127.0.0.1:${PORT}${PREFIX}/health"; then
         echo
-        echo "Deployed. Service: systemctl status solar-server / journalctl -u solar-server -f"
+        echo "Deployed on port ${PORT}${PREFIX:+ under ${PREFIX}}."
+        echo "Service: systemctl status solar-server / journalctl -u solar-server -f"
         exit 0
     fi
     sleep 1
 done
-echo "Service did not answer on :8000 — check: journalctl -u solar-server -n 50" >&2
+echo "Service did not answer on :${PORT}${PREFIX} — check: journalctl -u solar-server -n 50" >&2
 exit 1

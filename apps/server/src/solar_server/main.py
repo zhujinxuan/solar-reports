@@ -8,6 +8,7 @@ so sharing cached results across requests is safe.
 from __future__ import annotations
 
 import functools
+import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast
@@ -250,11 +251,32 @@ def _build_model_inputs(
 # ---------------------------------------------------------------------------
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def _resolve_url_prefix(url_prefix: str | None) -> str:
+    """Normalize the URL prefix; '' serves the app at root.
+
+    Explicit argument wins; otherwise the ``SOLAR_URL_PREFIX`` env var.
+    """
+    raw = (
+        os.environ.get("SOLAR_URL_PREFIX", "")
+        if url_prefix is None
+        else url_prefix
+    )
+    prefix = raw.strip().rstrip("/")
+    if prefix and not prefix.startswith("/"):
+        prefix = "/" + prefix
+    return prefix
+
+
+def create_app(
+    settings: Settings | None = None,
+    url_prefix: str | None = None,
+) -> FastAPI:
     """Build the FastAPI application.
 
     Args:
         settings: xlsx-core Settings override. Uses defaults if None.
+        url_prefix: path prefix to mount the app under (e.g. ``/solar-server``).
+            ``None`` reads env ``SOLAR_URL_PREFIX``; default serves at root.
 
     The returned app has TOML inputs pre-loaded if Settings specifies
     an ``inputs_toml`` path (env ``XLSX_INPUTS_TOML``).
@@ -457,7 +479,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response = await call_next(request)
         return response
 
-    return app
+    prefix = _resolve_url_prefix(url_prefix)
+    if not prefix:
+        return app
+    root = FastAPI(title="solar-server (root)")
+    root.mount(prefix, app)
+    return root
 
 
 # Module-level app for ``uvicorn solar_server.main:app``

@@ -219,3 +219,34 @@ def test_verify_skip_v2_http() -> None:
     assert r.status_code == 200
     data = r.json()
     assert data["ok"] is True
+
+
+# ---------------------------------------------------------------------------
+# URL prefix mount (SOLAR_URL_PREFIX / create_app(url_prefix=...))
+# ---------------------------------------------------------------------------
+
+
+def test_url_prefix_mount() -> None:
+    """create_app(url_prefix=...) serves app + static under the prefix only."""
+    from solar_server.main import create_app
+
+    prefixed = TestClient(create_app(url_prefix="/solar-server"))
+    r = prefixed.get("/solar-server/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+    # static frontend reachable under the prefix
+    page = prefixed.get("/solar-server/")
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    # root is no longer served
+    assert prefixed.get("/health").status_code == 404
+
+
+def test_url_prefix_env(monkeypatch) -> None:
+    """SOLAR_URL_PREFIX env var applies when url_prefix is not passed."""
+    from solar_server.main import create_app
+
+    monkeypatch.setenv("SOLAR_URL_PREFIX", "/solar-server")
+    prefixed = TestClient(create_app())
+    assert prefixed.get("/solar-server/health").status_code == 200
+    assert prefixed.get("/health").status_code == 404

@@ -9,9 +9,9 @@
 
 /* ---------- API ---------- */
 const API = {
-  schema: "/api/schema",
-  compute: "/api/domains/compute",
-  download: (version) => `/api/download/domains.xlsx?version=${encodeURIComponent(version)}`,
+  schema: "api/schema",
+  compute: "api/domains/compute",
+  download: (version) => `api/download/domains.xlsx?version=${encodeURIComponent(version)}`,
 };
 
 async function fetchJSON(url, options) {

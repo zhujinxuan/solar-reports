@@ -8,8 +8,10 @@ Type=simple
 User=solar
 Group=solar
 WorkingDirectory=/opt/solar-server
+Environment=SOLAR_HOST=127.0.0.1
+Environment=SOLAR_PORT=14905
 EnvironmentFile=-/opt/solar-server/env
-ExecStart=/opt/solar-server/.venv/bin/uvicorn solar_server.main:app --host 127.0.0.1 --port 8000
+ExecStart=/opt/solar-server/.venv/bin/uvicorn solar_server.main:app --host ${SOLAR_HOST} --port ${SOLAR_PORT}
 Restart=on-failure
 RestartSec=3
 # Compute is CPU-bound (1-70s per request, served via FastAPI's threadpool) and

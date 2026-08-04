@@ -166,3 +166,22 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
   install would ImportError on /compute/v2?flat=true and /verify path 1.2.
   Also XLSX_DAG_V2_PATH is dead config (no reader; file moved to
   packages/solar-v2/dag/).
+
+## 2026-08-04 · url-prefix-and-port-config
+- Hypothesis: serving under ip:13005/solar-server is best done by mounting the
+  app under a configurable prefix in-code (proxy forwards paths unchanged),
+  with the frontend switched to relative URLs.
+- Action: create_app(url_prefix=...) wraps the app in a root FastAPI mount when
+  a prefix is set (arg or SOLAR_URL_PREFIX env; default = serve at root so all
+  existing tests/paths stay untouched); app.js/index.html absolute /api/... refs
+  became relative; systemd unit gained SOLAR_HOST/SOLAR_PORT (default
+  127.0.0.1:14905) consumed via EnvironmentFile; update.sh smoke test reads
+  port+prefix from env; wrote deploy.md with the Aliyun scenario (Caddy 13005 →
+  uvicorn 14905, security-group + firewalld, IP-only HTTPS options).
+- Outcome: gates green; 2 new TestClient tests cover prefix mount (env + arg).
+- Learning: a path prefix must be owned by exactly one layer — app-side mount +
+  relative frontend URLs means no proxy rewriting anywhere; the alternative
+  (proxy strips prefix, app unaware) breaks the moment the frontend uses
+  absolute paths or the app is reached without the proxy. Relative URLs are
+  only safe because StaticFiles redirects prefix-without-slash to
+  prefix-with-slash.
