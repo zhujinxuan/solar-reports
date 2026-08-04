@@ -207,3 +207,19 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
   script" that silently assumes root violates the target's account model; the
   unprivileged default (uv run launcher + user-level persistence) is also the
   more portable one. **→ promoted to AGENTS.md (no privilege escalation)**
+
+## 2026-08-04 · pywin32-linux-sync-failure
+- Hypothesis: the first real VPS deploy (`uv sync` on Aliyun Linux) fails
+  because pywin32 was declared unconditionally and the universal lock carries
+  it to every platform.
+- Action: added the environment marker — `"pywin32>=312; sys_platform ==
+  'win32'"` in packages/xlsx-core/pyproject.toml; re-locked with `uv lock
+  --offline` (pypi.org TLS handshake-eof from this laptop; metadata already
+  cached). Lock diff: 2 lines.
+- Outcome: gates green (ty/ruff, 164 tests). Marker propagates into the
+  universal lock, so Linux sync skips pywin32 entirely; runtime was already
+  safe — excel_com lazy-imports win32com and converts ImportError into
+  RecalcResult(ok=False) (excel_com.py:29-39).
+- Learning: platform-specific deps MUST carry markers at declaration — a
+  universal lockfile records what you declared, it doesn't filter it per
+  platform. One marker line fixes every OS; no per-platform lockfiles needed.
