@@ -1,8 +1,8 @@
 """Serialize ModelResults for HTTP responses.
 
-Provides domain-structured JSON for /compute/v2, DomainsComputeResponse
-for /api/domains/compute (preserving the app.js-expected shape), and an
-openpyxl workbook builder for /api/download/domains.xlsx.
+Provides DomainsComputeResponse for /api/domains/compute (preserving the
+app.js-expected shape) and an openpyxl workbook builder for
+/api/download/domains.xlsx.
 """
 
 from __future__ import annotations
@@ -36,71 +36,6 @@ def _col_index_to_letter(idx: int) -> str:
         result = chr(ord("A") + n % 26) + result
         n = n // 26 - 1
     return result
-
-
-# ---------------------------------------------------------------------------
-# Domain JSON for /compute/v2
-# ---------------------------------------------------------------------------
-
-
-def model_results_to_domain_json(results: ModelResults) -> dict[str, object]:
-    """Serialize ModelResults to domain-structured JSON.
-
-    Returns::
-
-        {
-          "version": "v2",
-          "params": { "key": "params", "sheet": "参数表", ...,
-            "items": [{"key": ..., "label": ..., "unit": ..., "value": ...}, ...]
-          },
-          ...
-          "headline": { "equity_irr": ..., ... }
-        }
-    """
-    schemas = all_domains()
-
-    domains: dict[str, object] = {}
-    for ds in schemas:
-        domain_result = getattr(results, ds.key)
-        items: list[dict[str, object]] = []
-        for item_schema in ds.items:
-            entry: dict[str, object] = {
-                "key": item_schema.key,
-                "label": item_schema.label,
-                "unit": item_schema.unit,
-                "formula": item_schema.formula,
-                "kind": item_schema.kind,
-            }
-            if item_schema.kind == "scalar":
-                entry["value"] = _read_scalar(domain_result, item_schema.key)
-            else:
-                series = _read_series(domain_result, item_schema.key)
-                if series is not None:
-                    entry["values"] = _series_to_list(series)
-                else:
-                    entry["values"] = None
-            items.append(entry)
-
-        years = _domain_years(domain_result)
-        domains[ds.key] = {
-            "key": ds.key,
-            "sheet": ds.sheet,
-            "label": ds.label,
-            "years": years,
-            "items": items,
-        }
-
-    return {
-        "version": "v2",
-        **domains,
-        "headline": {
-            "equity_irr": results.equity_irr,
-            "project_irr_after_tax": results.project_irr_after_tax,
-            "equity_npv": results.equity_npv,
-            "project_npv_after_tax": results.project_npv_after_tax,
-            "equity_sale_price": results.equity_sale_price,
-        },
-    }
 
 
 # ---------------------------------------------------------------------------

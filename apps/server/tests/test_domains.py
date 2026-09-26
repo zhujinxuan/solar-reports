@@ -108,14 +108,6 @@ def test_domains_compute_v2_response_shape() -> None:
                 assert isinstance(cell["row"], int)
 
 
-def test_domains_compute_v1_works() -> None:
-    """POST /api/domains/compute v1 also works."""
-    r = client.post("/api/domains/compute", json={"version": "v1"})
-    assert r.status_code == 200
-    data = r.json()
-    assert len(data["domains"]) >= 1
-
-
 def test_domains_compute_v3_422() -> None:
     """POST /api/domains/compute v3 returns 422."""
     r = client.post("/api/domains/compute", json={"version": "v3"})
@@ -188,12 +180,6 @@ def test_download_xlsx_returns_valid_file() -> None:
     header = [str(c) if c else "" for c in rows[0]]
     assert header[:3] == ["项目", "公式", "单位"]
     wb.close()
-
-
-def test_download_xlsx_v1_works() -> None:
-    """GET /api/download/domains.xlsx v1 returns 200."""
-    r = client.get("/api/download/domains.xlsx", params={"version": "v1"})
-    assert r.status_code == 200
 
 
 def test_download_xlsx_v3_422() -> None:

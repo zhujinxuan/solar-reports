@@ -56,9 +56,7 @@ Stop (background mode): `pkill -f 'uvicorn solar_server.main:app'`
 | `SOLAR_HOST` | `127.0.0.1` | `0.0.0.0` exposes uvicorn directly (skip the proxy) |
 | `SOLAR_PORT` | `14905` | uvicorn port (internal while behind Caddy) |
 | `SOLAR_URL_PREFIX` | *(unset)* | path prefix the app mounts under, e.g. `/solar-server` |
-| `XLSX_*` | see template | **all optional** for frontend-only use — the UI only hits
-  zero-file-I/O v2 endpoints; dag/workbook/engine keys matter only for
-  `/compute/v1`, `flat` and `/verify` |
+| `XLSX_INPUTS_TOML` | *(unset)* | optional base ModelInputs TOML for the v2 endpoints; defaults otherwise. The server is **v2-only** — no dag, workbook, or recalc-engine keys exist here; the golden check is a dev-loop tool (`solar-cli verify`, package tests) |
 
 ## 3. Edge (admin) — Caddy path routing on 13005
 

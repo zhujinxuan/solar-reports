@@ -260,3 +260,25 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
   a physical-ratio check (output scales by the input ratio), not just a
   value-differs check — a differs-check alone can't distinguish real
   parameter flow from RNG/noise.
+
+## 2026-09-26 · serving-v2-only
+- Hypothesis: the server carries v1/dag surface the frontend never calls
+  (profiling 2026-09-26: v2 path = 0 dag/yaml functions, ~50ms live; the only
+  seconds-scale path was v1's 3.35s dag yaml parse). Serving should be pure
+  v2; the golden check belongs to the dev loop, not the VPS binary.
+- Action: stripped apps/server to v2-only — deleted /compute/{v1,v2} and
+  /verify routes, verify.py, dag machinery in domains.py (index/xlsx/cell
+  resolution), Compute*/Verify* schemas, _domain_json_from_results in
+  _engine_serialize, solar-v1 + pyyaml deps from pyproject. Golden check
+  stays in solar-v1 tests (G1), solar-v2 tests, and solar-cli verify.
+  HealthResponse.versions -> ("v2",). Contract tests pin removal: removed
+  paths fall through to the GET-only StaticFiles mount -> 405.
+- Outcome: gates green (ty/ruff, 151 passed 2:47; 14 v1/verify tests removed
+  with the surface). Deployed to SWAS :19111/solar-report/ (pull + uv sync +
+  restart, XLSX_DAG_PATH dropped from env); live: /health -> ["v2"], v2
+  compute 200 with overrides, /compute/v1 and /verify -> 405.
+- Learning: "removed route" assertions must pin the ACTUAL fallthrough
+  behavior — with a catch-all StaticFiles mount at "/", a deleted POST route
+  is 405, not 404. And package-boundary proof of engine independence is the
+  dependency list + grep, not the venv (shared workspace venvs keep every
+  package importable; only pyproject tells the truth).
