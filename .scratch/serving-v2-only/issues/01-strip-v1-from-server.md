@@ -1,6 +1,6 @@
 # Strip v1/dag from the serving binary — server becomes pure v2
 
-Status: claimed
+Status: resolved
 Type: task
 
 ## Context
@@ -46,4 +46,22 @@ apps/server only; `packages/solar-v1` untouched.
 
 ## Answer
 
-(pending)
+Resolved in commit `42e77a6` (2026-09-26), deployed to the SWAS VPS.
+
+- Gates: ty ✓, ruff ✓, 151 passed (2:47) — 14 v1/verify tests removed with
+  the surface; new contract tests pin the removal (removed paths fall through
+  to the GET-only StaticFiles mount → 405, not 404).
+- Removed: `/compute/{v1,v2}`, `/verify`, verify.py, dag machinery in
+  domains.py (474→95 lines), Compute*/Verify* schemas, solar-v1 + pyyaml deps.
+- Golden check stays in the dev loop: `packages/solar-v1` G1 test,
+  `packages/solar-v2` tests, `solar-cli verify` — unchanged.
+- Live on `:19111/solar-report/`: `/health` → `{"versions":["v2"]}`;
+  POST `/compute/v1` → 405; POST `/verify` → 405; v2 compute with overrides
+  `{installed_capacity_mw:30, first_year_full_hours:2000}` →
+  `pnl:power_generation = 55575.0` (matches reference). `XLSX_DAG_PATH`
+  dropped from the server env.
+
+## Comments
+
+- 2026-09-26: The only seconds-scale path in serving (v1's 3.35s dag yaml
+  parse) no longer exists in the binary.
