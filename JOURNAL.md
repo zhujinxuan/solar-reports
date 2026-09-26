@@ -240,3 +240,23 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
 - Learning: any function that both computes AND writes a tracked artifact
   will be abused by tests — purity at the library edge, writing at the command
   edge. And never put Python's salted hash() into persisted identifiers.
+
+## 2026-09-26 · editable-param-form
+- Hypothesis: the read-only parameter form was a frontend-only limitation —
+  the v2 engine already accepts per-request ModelInputs overrides
+  (DomainsComputeRequest.inputs → _build_model_inputs → compute_model).
+- Action: dropped readonly from the 7 param inputs (index.html), mapped
+  标杆上网电价 to ModelInputs field base_tariff (feed_in_tariff is DERIVED =
+  base_tariff + subsidy_per_kwh, not an input), collectParamInputs() gathers
+  finite numbers into the POST body, form "input" events invalidate the
+  memoized computePromise/computed cache. Removed the now-dead
+  input[readonly] CSS rule.
+- Outcome: gates green (ty/ruff, 165 passed 3:12). Live endpoint check:
+  capacity 15→30 + hours 1145→2000 scaled pnl:power_generation 15908.34 →
+  55575.0, matching the physical ratio (30·2000)/(15·1145) = 3.4930 to 4 dp;
+  sales_revenue and equity_irr move consistently. Deployed to SWAS
+  :19111/solar-report/ via git pull (static-only, no restart needed).
+- Learning: when a UI claims "server computes", verify the override path with
+  a physical-ratio check (output scales by the input ratio), not just a
+  value-differs check — a differs-check alone can't distinguish real
+  parameter flow from RNG/noise.

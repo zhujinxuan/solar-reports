@@ -214,7 +214,6 @@ button, input { font: inherit; color: inherit; }
   font-size: var(--fs-md);
 }
 
-.param-field input[readonly] { color: var(--ink-2); }
 
 .param-key {
   font-size: var(--fs-xs);

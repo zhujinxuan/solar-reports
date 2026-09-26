@@ -28,49 +28,49 @@
 
     <form id="param-form" class="param-form" aria-describedby="param-note">
       <fieldset>
-        <legend>当前模型参数（只读参考）</legend>
-        <p id="param-note" class="field-note">以下为当前工作簿内置参数，仅供核对；计算在服务端按完整模型执行，修改此处不会影响结果。</p>
+        <legend>模型参数（可编辑）</legend>
+        <p id="param-note" class="field-note">以下为工作簿内置默认参数，可直接修改；点击“运行计算”后，服务端 v2 引擎将按新参数执行完整模型。</p>
         <div class="param-grid">
           <label class="param-field">
             <span class="param-label">装机容量 <span class="param-unit">MW</span></span>
-            <input type="number" name="installed_capacity_mw" value="15" step="any" readonly aria-readonly="true">
+            <input type="number" name="installed_capacity_mw" value="15" step="any">
             <code class="param-key">installed_capacity_mw</code>
           </label>
           <label class="param-field">
             <span class="param-label">首年满发小时数 <span class="param-unit">h</span></span>
-            <input type="number" name="first_year_full_hours" value="1145" step="any" readonly aria-readonly="true">
+            <input type="number" name="first_year_full_hours" value="1145" step="any">
             <code class="param-key">first_year_full_hours</code>
           </label>
           <label class="param-field">
             <span class="param-label">标杆上网电价 <span class="param-unit">元/kWh</span></span>
-            <input type="number" name="feed_in_tariff" value="0.401" step="any" readonly aria-readonly="true">
-            <code class="param-key">feed_in_tariff</code>
+            <input type="number" name="base_tariff" value="0.401" step="any">
+            <code class="param-key">base_tariff</code>
           </label>
           <label class="param-field">
             <span class="param-label">市场化电价 <span class="param-unit">元/kWh</span></span>
-            <input type="number" name="market_tariff" value="0.39" step="any" readonly aria-readonly="true">
+            <input type="number" name="market_tariff" value="0.39" step="any">
             <code class="param-key">market_tariff</code>
           </label>
           <label class="param-field">
             <span class="param-label">长期贷款利率 <span class="param-unit">年利率</span></span>
-            <input type="number" name="loan_rate_long" value="0.0465" step="any" readonly aria-readonly="true">
+            <input type="number" name="loan_rate_long" value="0.0465" step="any">
             <code class="param-key">loan_rate_long</code>
           </label>
           <label class="param-field">
             <span class="param-label">所得税率 <span class="param-unit">比例</span></span>
-            <input type="number" name="income_tax_rate" value="0.25" step="any" readonly aria-readonly="true">
+            <input type="number" name="income_tax_rate" value="0.25" step="any">
             <code class="param-key">income_tax_rate</code>
           </label>
           <label class="param-field">
             <span class="param-label">资本金比例 <span class="param-unit">比例</span></span>
-            <input type="number" name="equity_ratio" value="0.2" step="any" readonly aria-readonly="true">
+            <input type="number" name="equity_ratio" value="0.2" step="any">
             <code class="param-key">equity_ratio</code>
           </label>
         </div>
       </fieldset>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary" id="run-compute">运行计算</button>
-        <span class="form-hint">调用 POST /api/domains/compute（version = v2）</span>
+        <span class="form-hint">调用 POST /api/domains/compute（version = v2，携带 inputs 覆盖参数）</span>
       </div>
     </form>
 

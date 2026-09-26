@@ -2,7 +2,7 @@
    光伏项目财务模型 — 前端逻辑（无构建步骤，原生 JS + 内联 SVG）
    数据源契约：
      GET  /api/schema                     → { domains: [DomainSchema] }
-     POST /api/domains/compute {version}  → { domains: [...含 items[].cells] }
+     POST /api/domains/compute {version, inputs?}  → { domains: [...含 items[].cells] }
      GET  /api/download/domains.xlsx?version=v2
    ============================================================ */
 "use strict";
@@ -141,12 +141,22 @@ function loadSchema() {
   return state.schemaPromise;
 }
 
+/** 读取参数表单 → ModelInputs 覆盖字段（仅收录有限数值；空/非法输入跳过，服务端用默认值）。 */
+function collectParamInputs() {
+  const inputs = {};
+  for (const input of document.querySelectorAll('#param-form input[name]')) {
+    const v = Number.parseFloat(input.value);
+    if (Number.isFinite(v)) inputs[input.name] = v;
+  }
+  return inputs;
+}
+
 function runCompute() {
   if (!state.computePromise) {
     state.computePromise = fetchJSON(API.compute, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ version: state.version }),
+      body: JSON.stringify({ version: state.version, inputs: collectParamInputs() }),
     }).then((data) => {
       state.computed = data;
       return data;
@@ -224,6 +234,12 @@ function initComputeTab() {
       btn.textContent = "运行计算";
     }
   }
+
+  // 参数一旦被修改，缓存的计算结果即失效（流程页/领域表随当前参数重新计算）
+  form.addEventListener("input", () => {
+    state.computePromise = null;
+    state.computed = null;
+  });
 
   form.addEventListener("submit", (e) => { e.preventDefault(); execute(); });
 }
