@@ -82,3 +82,17 @@ Promoted learnings (from JOURNAL.md — each links its source entry):
 - **Distillation verification**: a shared engine makes a golden diff vacuous —
   verify "no parser/evaluator/cached reads in the compute path" by grep, never
   by summary prose. (2026-07-26 · solar-v2-clone-attempt-REJECTED, solar-v2-restructure)
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as local markdown files under `.scratch/<feature>/` in this repo (not GitHub Issues). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root (created lazily by `/domain-modeling`). See `docs/agents/domain.md`.
