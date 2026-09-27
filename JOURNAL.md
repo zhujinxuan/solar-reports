@@ -282,3 +282,41 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
   is 405, not 404. And package-boundary proof of engine independence is the
   dependency list + grep, not the venv (shared workspace venvs keep every
   package importable; only pyproject tells the truth).
+
+## 2026-09-27 · capacity-vs-investment-diagnosis
+- Hypothesis: serving app shows IRR exploding when 装机容量 is raised while
+  总投资 barely moves — suspected dag or v2 bug.
+- Action: traced 总投资 chain in dag/solar.dag.yaml and the xlsx
+  (指标汇总!D23 = 投资计划!C5 = 建设投资+建设期利息+流动资金), checked which
+  components reference 参数表!C2; ran v2 capacity sweep 15/30/60 MW.
+- Outcome: 建设投资 components (参数表!C16 建安, C17 设备, C22 预备费, C18
+  其他) are absolute literals in the xlsx — no reference to capacity. Only
+  土地租金 (C68, via 占地面积 C61=C2×…) and 流动资金 (C29=C2×30) scale. v2
+  reproduces this exactly: sweep gave 总投资 57287/58053/59584 万 (+1.3%,
+  +4.0%) vs equity_irr 9.6%/57.1%/152.6%. Faithful to the workbook, so the
+  golden diff cannot catch it.
+- Learning: the workbook treats investment as absolute manual 万元 inputs;
+  单位千瓦投资 is an OUTPUT indicator, not an input. Exposing 装机容量 as a
+  standalone override in the app without co-scaling the cost inputs is a
+  modeling trap inherited from the xlsx, not an engine bug. Any fix (per-kW
+  cost inputs) must keep cap=15 defaults reproducing cached values.
+
+## 2026-09-27 · expose-investment-inputs
+- Hypothesis: exposing the 总投资 component cells as explicit inputs (plus a
+  read-only derived strip) removes the silent capacity/investment decoupling
+  without disturbing the golden contract at defaults.
+- Action: new ModelInputs field working_capital_per_kw=30.0 (元/kW, lifted from
+  inline constant in 参数表!C29=C2*30); params.py from_inputs uses it; serving
+  UI gained an 投资参数 fieldset (8 inputs) + derived strip
+  (静态/利息/流动资金/总投资/单位千瓦投资); CLI config.example.toml documents
+  the key. Ticket: .scratch/expose-investment-inputs/.
+- Outcome: gates green — ruff + ty clean, pytest 152 passed; CLI golden
+  `solar-cli verify --skip-engine` path 1.2 CLEAN (5059/5059 nodes, 0 diffs);
+  override behavior proven (rate 35 → 流动资金 525 = 15×35, server test +
+  browser e2e strip fill 56,316/521/450/57,287/3,733).
+- Learning: the workbook's magic constants hide in MORE than one place —
+  lifting `C29=C2*30`'s 30 exposed a SECOND frozen constant in debt.py
+  (working-capital interest hardcoded at 450.0×rate, i.e. pinned to the 15 MW
+  default). Any "expose the input" change MUST grep for the pre-folded
+  arithmetic result of the constant (cap×rate products), not just the constant
+  itself.
