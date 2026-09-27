@@ -320,3 +320,19 @@ Format per AGENTS.md. Learnings that generalize get promoted to AGENTS.md / DOMA
   default). Any "expose the input" change MUST grep for the pre-folded
   arithmetic result of the constant (cap×rate products), not just the constant
   itself.
+
+## 2026-09-27 · static-asset-stale-cache
+- Hypothesis: user reports derived strip stuck at "—" after 运行计算 on the
+  live site, while agent e2e (fresh headless browser) passed.
+- Action: reproduced against live with a fresh browser — strip fills
+  correctly (56,316/521/450/57,287/3,733), zero JS errors. Checked response
+  headers: statics served with ETag/Last-Modified but NO Cache-Control.
+- Outcome: root cause = heuristic browser caching — user's index.html was
+  fresh (new fieldset visible) but app.js stale from the previous deploy,
+  so renderInvestStrip never ran. Fix: _RevalidatedStaticFiles adds
+  Cache-Control: no-cache (ETag revalidation, cheap 304s); regression test
+  pins the header. Deployed 995570e; live header verified.
+- Learning: a deploy is not verified when the SERVER serves new bytes —
+  verify what a RETURNING browser loads. Any app serving versioned-by-deploy
+  statics without cache-busting URLs MUST send Cache-Control: no-cache;
+  agent e2e in a fresh profile cannot catch stale-cache bugs.
