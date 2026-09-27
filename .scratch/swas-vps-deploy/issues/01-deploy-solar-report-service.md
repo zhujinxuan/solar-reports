@@ -36,3 +36,8 @@ SWAS-OPEN `RunCommand` API (plaintext shell, Base64-encoded output).
 
 - 2026-09-26: Code at `156c1fa`. Editable-form update deployed via `git pull`
   (static-only, no restart needed).
+- 2026-09-27: Redeployed at `ef5cfd7` (expose-investment-inputs). Pull needed
+  `export PATH=$HOME/.local/bin:$PATH` before `uv` (RunCommand shell has no
+  login PATH — deploy.md §7). Restart required (solar-v2 code changed, not
+  static-only). Verified publicly: fieldset served, health 200, POST with
+  `{working_capital_per_kw: 35.0}` → `params:working_capital_total = 525.0`.
