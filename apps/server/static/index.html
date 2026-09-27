@@ -68,6 +68,74 @@
           </label>
         </div>
       </fieldset>
+      <fieldset>
+        <legend>投资参数（可编辑，万元 absolute inputs — 不随装机容量自动缩放）</legend>
+        <div class="param-grid">
+          <label class="param-field">
+            <span class="param-label">建安工程费 <span class="param-unit">万元</span></span>
+            <input type="number" name="construction_cost" value="10046.37" step="any">
+            <code class="param-key">construction_cost</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">设备购置费 <span class="param-unit">万元</span></span>
+            <input type="number" name="equipment_cost" value="40042.42" step="any">
+            <code class="param-key">equipment_cost</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">其他费用（不含耕地占用税） <span class="param-unit">万元</span></span>
+            <input type="number" name="other_cost_base" value="2281.33" step="any">
+            <code class="param-key">other_cost_base</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">耕地占用税 <span class="param-unit">万元</span></span>
+            <input type="number" name="farmland_occupation_tax" value="3000" step="any">
+            <code class="param-key">farmland_occupation_tax</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">基本预备费 <span class="param-unit">万元</span></span>
+            <input type="number" name="contingency" value="631.8" step="any">
+            <code class="param-key">contingency</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">单位占地面积 <span class="param-unit">hm²/10MW</span></span>
+            <input type="number" name="land_per_mw" value="11.623" step="any">
+            <code class="param-key">land_per_mw</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">首年每亩土地租金 <span class="param-unit">元/亩</span></span>
+            <input type="number" name="land_rent_per_mu" value="600" step="any">
+            <code class="param-key">land_rent_per_mu</code>
+          </label>
+          <label class="param-field">
+            <span class="param-label">流动资金标准 <span class="param-unit">元/kW</span></span>
+            <input type="number" name="working_capital_per_kw" value="30" step="any">
+            <code class="param-key">working_capital_per_kw</code>
+          </label>
+        </div>
+        <p class="field-note">运行计算后按最新参数刷新</p>
+        <dl class="kpi-grid" id="invest-derived-strip">
+          <div class="kpi-card">
+            <dt class="kpi-label">静态投资（万元）</dt>
+            <dd class="kpi-value" id="derived-static-investment">—</dd>
+          </div>
+          <div class="kpi-card">
+            <dt class="kpi-label">建设期利息（万元）</dt>
+            <dd class="kpi-value" id="derived-construction-interest">—</dd>
+          </div>
+          <div class="kpi-card">
+            <dt class="kpi-label">流动资金（万元）</dt>
+            <dd class="kpi-value" id="derived-working-capital">—</dd>
+          </div>
+          <div class="kpi-card">
+            <dt class="kpi-label">总投资（万元）</dt>
+            <dd class="kpi-value" id="derived-total-investment">—</dd>
+          </div>
+          <div class="kpi-card">
+            <dt class="kpi-label">单位千瓦投资（元/kW）</dt>
+            <dd class="kpi-value" id="derived-unit-investment">—</dd>
+          </div>
+        </dl>
+      </fieldset>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary" id="run-compute">运行计算</button>
         <span class="form-hint">调用 POST /api/domains/compute（version = v2，携带 inputs 覆盖参数）</span>

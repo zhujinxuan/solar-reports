@@ -65,7 +65,7 @@ class DerivedParams:
     """建设期可抵扣增值税 = Σ cost_i / (1+vat_i) × vat_i，万元"""
 
     working_capital_total: float
-    """流动资金总额 = capacity × 30，万元"""
+    """流动资金总额 = capacity × working_capital_per_kw，万元"""
 
     land_use_tax: float
     """城镇土地使用税 = land_use_tax_rate × land_taxed_area / 10000，万元"""
@@ -116,7 +116,7 @@ class DerivedParams:
             epc_unit_price=epc_unit,
             epc_contract_price=epc_unit,
             deductible_vat_construction=deductible,
-            working_capital_total=cap * 30,
+            working_capital_total=cap * inputs.working_capital_per_kw,
             land_use_tax=inputs.land_use_tax_rate
             * inputs.land_taxed_area
             / 10000,
@@ -499,7 +499,7 @@ def compute_deductible_vat_construction(
 def compute_working_capital_total(
     derived: DerivedParams,
 ) -> float:
-    """Row 29: 流动资金总额 — capacity × 30."""
+    """Row 29: 流动资金总额 — capacity × working_capital_per_kw."""
     return derived.working_capital_total
 
 
@@ -880,7 +880,7 @@ SCHEMA = DomainSchema(
             key="working_capital_total",
             label="流动资金总额",
             unit="万元",
-            formula="capacity × 30",
+            formula="capacity × working_capital_per_kw",
             inputs=("params:working_capital_total",),
             rows=(29,),
             kind="scalar",

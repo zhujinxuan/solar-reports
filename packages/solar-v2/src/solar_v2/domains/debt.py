@@ -113,13 +113,14 @@ def compute_working_capital_balance(
 
 
 def compute_working_capital_interest(
+    invest_working_capital_loan_total: float,
     wc_rate: float,
     n: int,
 ) -> pl.Series:
-    """Row 16: D=0, then 450 × wc_rate (26 values)."""
+    """Row 16: D=0, then working_capital_balance × wc_rate (26 values)."""
     return pl.Series(
         "working_capital_interest",
-        [0.0] + [450.0 * wc_rate] * n,
+        [0.0] + [invest_working_capital_loan_total * wc_rate] * n,
         dtype=pl.Float64,
     )
 
@@ -363,7 +364,9 @@ def compute_base(
             "working_capital_balance": compute_working_capital_balance(
                 invest_working_capital_loan_total, n
             ),
-            "working_capital_interest": compute_working_capital_interest(wc_rate, n),
+            "working_capital_interest": compute_working_capital_interest(
+                invest_working_capital_loan_total, wc_rate, n
+            ),
             "pmt_residual": compute_pmt_residual(residuals),
         },
         schema_overrides={

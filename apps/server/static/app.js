@@ -226,6 +226,7 @@ function initComputeTab() {
       const data = await runCompute();
       clearStatus(status);
       renderKPIs(data);
+      renderInvestStrip(data);
       renderDomainTables(data);
     } catch (err) {
       showError(status, `计算请求失败（${err.message}）。请确认服务端已启动后重试。`, execute);
@@ -330,6 +331,25 @@ function renderKPIs(data) {
     grid.append(el("p", { class: "field-note", text: "未在结果中匹配到头部指标项，请查看下方分领域明细。" }));
   }
   area.hidden = false;
+}
+
+/* 投资派生条（表单内只读）：dd id 与 index.html #invest-derived-strip 显式对应，
+   复用 KPI 绑定取值规则（agg 缺省取首个数值单元）；item 缺失时保持占位 “—”。 */
+const INVEST_STRIP_BINDINGS = [
+  { ddId: "derived-static-investment",     domain: "params", itemKey: "static_investment" },
+  { ddId: "derived-construction-interest", domain: "invest", itemKey: "construction_interest", agg: "sum" },
+  { ddId: "derived-working-capital",       domain: "params", itemKey: "working_capital_total" },
+  { ddId: "derived-total-investment",      domain: "invest", itemKey: "total_investment", agg: "sum" },
+  { ddId: "derived-unit-investment",       domain: "params", itemKey: "unit_static_investment" },
+];
+
+function renderInvestStrip(data) {
+  for (const binding of INVEST_STRIP_BINDINGS) {
+    const dd = document.getElementById(binding.ddId);
+    if (!dd) continue;
+    const hit = bindKPIItem(data, binding);
+    dd.textContent = hit ? formatKPI(hit.value) : "—";
+  }
 }
 
 /* 分领域紧凑表：项目 | 单位 | 首年值 | 合计值（若有 AF 合计列则单独列出） */

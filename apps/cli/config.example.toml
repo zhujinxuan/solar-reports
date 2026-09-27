@@ -57,6 +57,7 @@ libreoffice_path = "C:/Program Files/LibreOffice/program/soffice.exe"
 # loan_years = 15
 # working_capital_loan_rate = 0.0435
 # short_term_loan_rate = 0.0435
+# working_capital_per_kw = 30.0
 # vat_rate = 0.13
 # vat_exempt_year = 2020
 # city_maintenance_tax_rate = 0.05

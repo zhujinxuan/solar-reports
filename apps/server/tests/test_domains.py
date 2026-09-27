@@ -148,6 +148,19 @@ def test_domains_compute_v2_inputs_override() -> None:
     assert abs(ratio - 2.0) < 0.01
 
 
+def test_domains_compute_v2_working_capital_override() -> None:
+    """Override working_capital_per_kw=35 → 流动资金总额 = 525 万元 (15 × 35)."""
+    r = client.post(
+        "/api/domains/compute",
+        json={"version": "v2", "inputs": {"working_capital_per_kw": 35.0}},
+    )
+    assert r.status_code == 200
+
+    params = next(d for d in r.json()["domains"] if d["key"] == "params")
+    wc = next(it for it in params["items"] if it["key"] == "working_capital_total")
+    assert abs(wc["cells"][0]["value"] - 525.0) < 1e-6
+
+
 # ---------------------------------------------------------------------------
 # GET /api/download/domains.xlsx
 # ---------------------------------------------------------------------------

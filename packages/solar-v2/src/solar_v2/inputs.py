@@ -117,6 +117,10 @@ class ModelInputs(BaseModel, frozen=True):
     short_term_loan_rate: float = Field(
         default=0.0435, description="短期贷款利息（利率）"
     )
+    working_capital_per_kw: float = Field(
+        default=30.0,
+        description="铺底流动资金标准，元/kW（流动资金总额 = 装机容量 × 标准）",
+    )
 
     # --- taxes ---
     vat_rate: float = Field(
@@ -254,6 +258,7 @@ class ModelInputs(BaseModel, frozen=True):
         "land_use_fee", "vat_rate_construction", "vat_rate_equipment",
         "vat_rate_survey", "equity_ratio", "loan_rate_long",
         "working_capital_loan_rate", "short_term_loan_rate",
+        "working_capital_per_kw",
         "vat_rate", "city_maintenance_tax_rate", "education_surcharge_rate",
         "income_tax_rate", "western_dev_tax_rate", "land_use_tax_rate",
         "land_taxed_area", "surplus_reserve_ratio", "salvage_rate",
