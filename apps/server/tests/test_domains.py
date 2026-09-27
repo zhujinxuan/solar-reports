@@ -227,3 +227,20 @@ def test_root_serves_or_falls_through() -> None:
     r = client.get("/")
     # If static dir is present, returns 200; else 404
     assert r.status_code in (200, 404)
+
+
+# ---------------------------------------------------------------------------
+# Static frontend caching
+# ---------------------------------------------------------------------------
+
+
+def test_static_assets_force_revalidation() -> None:
+    """Static assets carry Cache-Control: no-cache.
+
+    Deploys must never strand a stale app.js behind heuristic browser
+    caching while index.html is fresh (hit 2026-09-27: new fieldset HTML
+    with old JS → derived strip never filled).
+    """
+    r = client.get("/app.js")
+    assert r.status_code == 200
+    assert r.headers["Cache-Control"] == "no-cache"

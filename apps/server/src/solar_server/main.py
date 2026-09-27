@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
 from xlsx_core.settings import Settings
 
 from solar_server.domains import _build_schema_response
@@ -28,6 +30,21 @@ from solar_server.schemas import (
     DomainsSchemaResponse,
     HealthResponse,
 )
+
+
+class _RevalidatedStaticFiles(StaticFiles):
+    """StaticFiles that force revalidation on every load.
+
+    ``Cache-Control: no-cache`` makes the browser revalidate via ETag
+    (cheap 304 when unchanged) instead of heuristic caching — without it a
+    deploy can leave a stale app.js in the browser while the new index.html
+    references behavior the old script does not have (hit 2026-09-27).
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("Cache-Control", "no-cache")
+        return response
 
 # ---------------------------------------------------------------------------
 # ModelInputs — TOML load + merge helper
@@ -198,7 +215,7 @@ def create_app(
     if _static_dir.is_dir():
         app.mount(
             "/",
-            StaticFiles(directory=str(_static_dir), html=True),
+            _RevalidatedStaticFiles(directory=str(_static_dir), html=True),
             name="static",
         )
 
